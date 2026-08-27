@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from biometric_attendance.app.viewmodels.workforce_vms import EmployeesViewModel
 from biometric_attendance.core.dtos.workforce_dtos import DepartmentEntity, EmployeeEntity, PositionEntity
 from biometric_attendance.core.enums.workforce import EmploymentStatus, EmploymentType
+from biometric_attendance.app.views.workforce.employee_wizard import EmployeeWizardDialog
 
 _ALL_STATUSES = "All"
 
@@ -59,50 +60,63 @@ class EmployeeFormDialog(QDialog):
         form_layout.addRow(header)
 
         self.emp_id_input = QLineEdit()
-        lbl = QLabel("Employee ID *:")
-        lbl.setObjectName("FormLabel")
-        form_layout.addRow(lbl, self.emp_id_input)
-
         self.fname_input = QLineEdit()
-        lbl = QLabel("First Name *:")
-        lbl.setObjectName("FormLabel")
-        form_layout.addRow(lbl, self.fname_input)
-
         self.mname_input = QLineEdit()
-        lbl = QLabel("Middle Name:")
-        lbl.setObjectName("FormLabel")
-        form_layout.addRow(lbl, self.mname_input)
-
         self.lname_input = QLineEdit()
-        lbl = QLabel("Last Name *:")
-        lbl.setObjectName("FormLabel")
-        form_layout.addRow(lbl, self.lname_input)
-
+        self.suffix_input = QLineEdit()
+        
+        from PySide6.QtWidgets import QDateEdit, QComboBox
+        from PySide6.QtCore import QDate
+        import datetime as dt
+        
+        self.birth_date_input = QDateEdit()
+        self.birth_date_input.setCalendarPopup(True)
+        self.birth_date_input.setDate(QDate(1990, 1, 1))
+        
+        self.gender_combo = QComboBox()
+        self.gender_combo.addItems(["Male", "Female", "Other", "Prefer not to say"])
+        
+        self.phone_input = QLineEdit()
         self.email_input = QLineEdit()
-        lbl = QLabel("Email:")
-        lbl.setObjectName("FormLabel")
-        form_layout.addRow(lbl, self.email_input)
+        self.address_input = QLineEdit()
+
+        form_layout.addRow(self._label("Employee ID *"), self.emp_id_input)
+        form_layout.addRow(self._label("First Name *"), self.fname_input)
+        form_layout.addRow(self._label("Middle Name"), self.mname_input)
+        form_layout.addRow(self._label("Last Name *"), self.lname_input)
+        form_layout.addRow(self._label("Suffix"), self.suffix_input)
+        form_layout.addRow(self._label("Birth Date"), self.birth_date_input)
+        form_layout.addRow(self._label("Gender"), self.gender_combo)
+        form_layout.addRow(self._label("Phone"), self.phone_input)
+        form_layout.addRow(self._label("Email"), self.email_input)
+        form_layout.addRow(self._label("Address"), self.address_input)
 
         header = QLabel("<b><br>Employment Information</b>")
         header.setObjectName("FormLabel")
         form_layout.addRow(header)
 
         self.dept_combo = QComboBox()
-        lbl = QLabel("Department:")
-        lbl.setObjectName("FormLabel")
-        form_layout.addRow(lbl, self.dept_combo)
-
         self.pos_combo = QComboBox()
-        lbl = QLabel("Position:")
-        lbl.setObjectName("FormLabel")
-        form_layout.addRow(lbl, self.pos_combo)
-
         self.type_combo = QComboBox()
         for t in EmploymentType:
             self.type_combo.addItem(t.value, t)
-        lbl = QLabel("Employment Type:")
-        lbl.setObjectName("FormLabel")
-        form_layout.addRow(lbl, self.type_combo)
+            
+        self.date_hired_input = QDateEdit()
+        self.date_hired_input.setCalendarPopup(True)
+        self.date_hired_input.setDate(QDate.currentDate())
+        
+        self.status_combo = QComboBox()
+        for s in EmploymentStatus:
+            self.status_combo.addItem(s.value, s)
+            
+        self.supervisor_combo = QComboBox()
+
+        form_layout.addRow(self._label("Department"), self.dept_combo)
+        form_layout.addRow(self._label("Position"), self.pos_combo)
+        form_layout.addRow(self._label("Employment Type"), self.type_combo)
+        form_layout.addRow(self._label("Date Hired"), self.date_hired_input)
+        form_layout.addRow(self._label("Employment Status"), self.status_combo)
+        form_layout.addRow(self._label("Supervisor"), self.supervisor_combo)
 
         header = QLabel("<b><br>Attendance Config</b>")
         header.setObjectName("FormLabel")
@@ -110,14 +124,14 @@ class EmployeeFormDialog(QDialog):
 
         self.grace_spin = QSpinBox()
         self.grace_spin.setRange(0, 120)
-        lbl = QLabel("Grace Period (mins):")
-        lbl.setObjectName("FormLabel")
-        form_layout.addRow(lbl, self.grace_spin)
-
         self.ot_check = QCheckBox()
-        lbl = QLabel("Overtime Eligible:")
-        lbl.setObjectName("FormLabel")
-        form_layout.addRow(lbl, self.ot_check)
+        
+        self.rest_day_combo = QComboBox()
+        self.rest_day_combo.addItems(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"])
+        
+        form_layout.addRow(self._label("Grace Period (mins)"), self.grace_spin)
+        form_layout.addRow(self._label("Overtime Eligible"), self.ot_check)
+        form_layout.addRow(self._label("Default Rest Day"), self.rest_day_combo)
 
         scroll.setWidget(content_widget)
         layout.addWidget(scroll)
@@ -130,10 +144,16 @@ class EmployeeFormDialog(QDialog):
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addWidget(self.button_box)
+        
+    def _label(self, text: str) -> QLabel:
+        lbl = QLabel(text + ":")
+        lbl.setObjectName("FormLabel")
+        return lbl
 
     def _connect_signals(self):
         self.vm.departments_loaded.connect(self._on_departments_loaded)
         self.vm.positions_loaded.connect(self._on_positions_loaded)
+        self.vm.employees_loaded.connect(self._on_employees_loaded)
         self.vm.load_data()
 
     def _on_departments_loaded(self, depts):
@@ -158,8 +178,22 @@ class EmployeeFormDialog(QDialog):
                     self.pos_combo.setCurrentIndex(i)
                     break
 
+    def _on_employees_loaded(self, employees):
+        self.supervisor_combo.clear()
+        self.supervisor_combo.addItem("None", -1)
+        for emp in employees:
+            if self._employee and emp.id == self._employee.id:
+                continue # Cannot be own supervisor
+            self.supervisor_combo.addItem(emp.full_name, emp.id)
+        if self._employee and self._employee.supervisor_id is not None:
+            for i in range(self.supervisor_combo.count()):
+                if self.supervisor_combo.itemData(i) == self._employee.supervisor_id:
+                    self.supervisor_combo.setCurrentIndex(i)
+                    break
+
     def prefill(self):
         """Pre-fill the form with the employee current data."""
+        from PySide6.QtCore import QDate
         emp = self._employee
         if emp is None:
             return
@@ -167,28 +201,62 @@ class EmployeeFormDialog(QDialog):
         self.fname_input.setText(emp.first_name or "")
         self.mname_input.setText(emp.middle_name or "")
         self.lname_input.setText(emp.last_name or "")
+        self.suffix_input.setText(emp.suffix or "")
         self.email_input.setText(emp.email or "")
+        self.phone_input.setText(emp.phone or "")
+        self.address_input.setText(emp.address or "")
+        
+        if emp.birth_date:
+            self.birth_date_input.setDate(QDate(emp.birth_date.year, emp.birth_date.month, emp.birth_date.day))
+            
+        if emp.date_hired:
+            self.date_hired_input.setDate(QDate(emp.date_hired.year, emp.date_hired.month, emp.date_hired.day))
+            
         self.grace_spin.setValue(emp.grace_period_mins or 0)
         self.ot_check.setChecked(emp.overtime_eligible or False)
+        
+        self.gender_combo.setCurrentText(emp.gender or "")
+        self.rest_day_combo.setCurrentText(emp.rest_day or "Sunday")
+        
         for i in range(self.type_combo.count()):
             if self.type_combo.itemData(i) == emp.employment_type:
                 self.type_combo.setCurrentIndex(i)
                 break
+                
+        for i in range(self.status_combo.count()):
+            if self.status_combo.itemData(i) == emp.status:
+                self.status_combo.setCurrentIndex(i)
+                break
 
     def get_form_data(self):
+        import datetime as dt
         dept_id = self.dept_combo.currentData()
         pos_id = self.pos_combo.currentData()
+        sup_id = self.supervisor_combo.currentData()
+        
+        birth_d = self.birth_date_input.date()
+        date_h = self.date_hired_input.date()
+        
         return {
             "employee_id": self.emp_id_input.text().strip(),
             "first_name": self.fname_input.text().strip(),
             "middle_name": self.mname_input.text().strip(),
             "last_name": self.lname_input.text().strip(),
+            "suffix": self.suffix_input.text().strip(),
+            "birth_date": dt.date(birth_d.year(), birth_d.month(), birth_d.day()),
+            "gender": self.gender_combo.currentText(),
+            "phone": self.phone_input.text().strip(),
             "email": self.email_input.text().strip(),
+            "address": self.address_input.text().strip(),
             "department_id": dept_id if dept_id != -1 else None,
             "position_id": pos_id if pos_id != -1 else None,
             "employment_type": self.type_combo.currentData(),
+            "date_hired": dt.date(date_h.year(), date_h.month(), date_h.day()),
+            "status": self.status_combo.currentData(),
+            "supervisor_id": sup_id if sup_id != -1 else None,
             "grace_period_mins": self.grace_spin.value(),
             "overtime_eligible": self.ot_check.isChecked(),
+            "rest_day": self.rest_day_combo.currentText(),
         }
 
 
@@ -205,7 +273,17 @@ class EmployeesView(QWidget):
         self.vm.load_data()
 
     def _setup_ui(self):
-        layout = QVBoxLayout(self)
+        from biometric_attendance.app.views.workforce.employee_profile_view import EmployeeProfileView
+        
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.stack = QStackedWidget()
+        main_layout.addWidget(self.stack)
+        
+        # 0: List Page
+        self.list_page = QWidget()
+        layout = QVBoxLayout(self.list_page)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
 
@@ -246,10 +324,17 @@ class EmployeesView(QWidget):
         )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.Interactive)
-        self.table.setColumnWidth(7, 190)
+        self.table.setColumnWidth(7, 240)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
+        
+        self.stack.addWidget(self.list_page)
+        
+        # 1: Profile Page
+        self.profile_page = EmployeeProfileView()
+        self.profile_page.back_requested.connect(self._on_back_to_list)
+        self.stack.addWidget(self.profile_page)
 
     def _connect_signals(self):
         self.add_btn.clicked.connect(self._on_add_clicked)
@@ -258,8 +343,11 @@ class EmployeesView(QWidget):
         self.search_input.textChanged.connect(self._apply_filters)
         self.status_filter.currentIndexChanged.connect(self._apply_filters)
 
+    def _on_back_to_list(self):
+        self.stack.setCurrentIndex(0)
+
     def _on_add_clicked(self):
-        dialog = EmployeeFormDialog(self.vm, self)
+        dialog = EmployeeWizardDialog(self.vm, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_form_data()
             if not data["employee_id"] or not data["first_name"] or not data["last_name"]:
@@ -276,6 +364,10 @@ class EmployeesView(QWidget):
                 QMessageBox.warning(self, "Validation Error", "Employee ID, First Name, and Last Name are required.")
                 return
             self.vm.update_employee(employee.id, data)
+
+    def _on_view_clicked(self, employee):
+        self.profile_page.set_employee(employee)
+        self.stack.setCurrentIndex(1)
 
     def _on_archive_clicked(self, employee):
         reply = QMessageBox.question(
@@ -330,10 +422,15 @@ class EmployeesView(QWidget):
             actions_layout = QHBoxLayout(actions_widget)
             actions_layout.setContentsMargins(4, 2, 4, 2)
             actions_layout.setSpacing(6)
+            
+            view_btn = QPushButton("View")
+            view_btn.setObjectName("SecondaryButton")
+            view_btn.setMinimumWidth(50)
+            view_btn.clicked.connect(lambda checked, e=emp: self._on_view_clicked(e))
 
             edit_btn = QPushButton("Edit")
             edit_btn.setObjectName("SecondaryButton")
-            edit_btn.setMinimumWidth(70)
+            edit_btn.setMinimumWidth(50)
             edit_btn.clicked.connect(lambda checked, e=emp: self._on_edit_clicked(e))
 
             archive_btn = QPushButton("Archive")
@@ -341,10 +438,11 @@ class EmployeesView(QWidget):
             archive_btn.setEnabled(emp.status != EmploymentStatus.ARCHIVED)
             archive_btn.clicked.connect(lambda checked, e=emp: self._on_archive_clicked(e))
 
+            actions_layout.addWidget(view_btn)
             actions_layout.addWidget(edit_btn)
             actions_layout.addWidget(archive_btn)
             self.table.setCellWidget(row, 7, actions_widget)
-        self.table.setColumnWidth(7, 190)
+        self.table.setColumnWidth(7, 240)
 
     def _on_error(self, message):
         QMessageBox.critical(self, "Error", message)
