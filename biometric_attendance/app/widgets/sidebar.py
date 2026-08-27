@@ -57,7 +57,6 @@ _NAV_ITEMS: list[NavItem | NavSection] = [
     ]),
     NavSection("SCHEDULING", [
         NavItem("Shift Templates", "shift_templates", Permission.SCHEDULE_VIEW),
-        NavItem("Employee Schedules", "employee_schedules", Permission.SCHEDULE_VIEW),
         NavItem("Calendar", "schedule_calendar", Permission.SCHEDULE_VIEW),
         NavItem("Holidays", "holidays", Permission.SCHEDULE_VIEW),
     ]),
