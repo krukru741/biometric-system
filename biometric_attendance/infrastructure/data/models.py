@@ -347,7 +347,7 @@ class HolidayModel(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
-    holiday_type: Mapped["HolidayType"] = mapped_column(Enum("HolidayType", create_constraint=False, native_enum=False), nullable=False)
+    holiday_type: Mapped[HolidayType] = mapped_column(Enum(HolidayType), nullable=False)
     is_paid: Mapped[bool] = mapped_column(Boolean, default=True)
     notes: Mapped[Optional[str]] = mapped_column(String(255))
 
@@ -363,9 +363,9 @@ class EmployeeScheduleModel(Base):
     shift_template_id: Mapped[Optional[int]] = mapped_column(ForeignKey("shift_templates.id"))
     date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
     is_rest_day: Mapped[bool] = mapped_column(Boolean, default=False)
-    schedule_status: Mapped["ScheduleStatus"] = mapped_column(
-        Enum("ScheduleStatus", create_constraint=False, native_enum=False),
-        default="Active",
+    schedule_status: Mapped[ScheduleStatus] = mapped_column(
+        Enum(ScheduleStatus),
+        default=ScheduleStatus.ACTIVE,
     )
     notes: Mapped[Optional[str]] = mapped_column(String(255))
     # Override times — nullable; UI to set them deferred to a later phase
