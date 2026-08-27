@@ -17,6 +17,13 @@ from biometric_attendance.infrastructure.security.password_hasher import Passwor
 from biometric_attendance.application.services.auth_service import AuthService
 from biometric_attendance.application.services.setup_service import SetupService
 from biometric_attendance.application.services.workforce_service import WorkforceService
+
+from biometric_attendance.infrastructure.repositories.scheduling_repository import (
+    ShiftTemplateRepository,
+    HolidayRepository,
+    EmployeeScheduleRepository,
+)
+from biometric_attendance.application.services.scheduling_service import SchedulingService
 from biometric_attendance.infrastructure.repositories.workforce_repository import (
     DepartmentRepository,
     EmployeeRepository,
@@ -72,4 +79,29 @@ class AppContainer(containers.DeclarativeContainer):
         department_repository=department_repository,
         position_repository=position_repository,
         employee_repository=employee_repository,
+    )
+
+
+    # ── Scheduling ────────────────────────────────────────────────────────
+    
+    shift_template_repository = providers.Factory(
+        ShiftTemplateRepository,
+        session=db_session,
+    )
+    
+    holiday_repository = providers.Factory(
+        HolidayRepository,
+        session=db_session,
+    )
+    
+    employee_schedule_repository = providers.Factory(
+        EmployeeScheduleRepository,
+        session=db_session,
+    )
+    
+    scheduling_service = providers.Factory(
+        SchedulingService,
+        shift_template_repository=shift_template_repository,
+        holiday_repository=holiday_repository,
+        employee_schedule_repository=employee_schedule_repository,
     )
