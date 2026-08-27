@@ -22,6 +22,15 @@ from biometric_attendance.app.views.dashboard_view import DashboardView
 from biometric_attendance.app.views.workforce.departments_view import DepartmentsView
 from biometric_attendance.app.views.workforce.positions_view import PositionsView
 from biometric_attendance.app.views.workforce.employees_view import EmployeesView
+from biometric_attendance.app.viewmodels.scheduling_vms import (
+    ShiftTemplatesViewModel,
+    HolidaysViewModel,
+    ScheduleCalendarViewModel,
+)
+from biometric_attendance.app.views.scheduling.shift_templates_view import ShiftTemplatesView
+from biometric_attendance.app.views.scheduling.holidays_view import HolidaysView
+from biometric_attendance.app.views.scheduling.schedule_calendar_view import ScheduleCalendarView
+
 from biometric_attendance.app.viewmodels.workforce_vms import DepartmentsViewModel, PositionsViewModel, EmployeesViewModel
 from biometric_attendance.core.dtos.auth_dtos import SessionUser
 from biometric_attendance.app.container import AppContainer
