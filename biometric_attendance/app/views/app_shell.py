@@ -140,15 +140,6 @@ class AppShell(QMainWindow):
 
         self._stack.setCurrentWidget(self._pages[page_key])
         self._sidebar.set_active(page_key)
-        elif page_key == "shift_templates":
-            vm = ShiftTemplatesViewModel(self._container.scheduling_service())
-            return ShiftTemplatesView(vm)
-        elif page_key == "holidays":
-            vm = HolidaysViewModel(self._container.scheduling_service())
-            return HolidaysView(vm)
-        elif page_key == "schedule_calendar":
-            vm = ScheduleCalendarViewModel(self._container.scheduling_service())
-            return ScheduleCalendarView(vm)
         title = _PAGE_TITLES.get(page_key, page_key.replace("_", " ").title())
         self._topbar.set_page_title(title)
 
@@ -164,5 +155,14 @@ class AppShell(QMainWindow):
         elif page_key == "employees":
             vm = EmployeesViewModel(self._container.workforce_service())
             return EmployeesView(vm)
+        elif page_key == "shift_templates":
+            vm = ShiftTemplatesViewModel(self._container.scheduling_service())
+            return ShiftTemplatesView(vm)
+        elif page_key == "holidays":
+            vm = HolidaysViewModel(self._container.scheduling_service())
+            return HolidaysView(vm)
+        elif page_key == "schedule_calendar":
+            vm = ScheduleCalendarViewModel(self._container.scheduling_service())
+            return ScheduleCalendarView(vm)
         title = _PAGE_TITLES.get(page_key, page_key.replace("_", " ").title())
         return _PlaceholderPage(title)
