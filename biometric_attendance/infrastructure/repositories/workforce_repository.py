@@ -1,0 +1,114 @@
+"""Concrete SQLAlchemy repositories for Workforce entities."""
+from __future__ import annotations
+
+from typing import List, Optional
+
+from sqlalchemy.orm import Session, joinedload
+
+from biometric_attendance.core.dtos.workforce_dtos import DepartmentEntity, EmployeeEntity, PositionEntity
+from biometric_attendance.core.enums.workforce import EmploymentStatus, EmploymentType
+from biometric_attendance.infrastructure.data.models import DepartmentModel, EmployeeModel, PositionModel
+
+
+class DepartmentRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def _to_entity(self, model: DepartmentModel) -> DepartmentEntity:
+        return DepartmentEntity(
+            id=model.id,
+            name=model.name,
+            description=model.description,
+            is_active=model.is_active,
+        )
+
+    def get_all(self) -> List[DepartmentEntity]:
+        models = self._session.query(DepartmentModel).all()
+        return [self._to_entity(m) for m in models]
+
+    def create(self, name: str, description: str, is_active: bool = True) -> DepartmentEntity:
+        model = DepartmentModel(name=name, description=description, is_active=is_active)
+        self._session.add(model)
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
+
+
+class PositionRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def _to_entity(self, model: PositionModel) -> PositionEntity:
+        return PositionEntity(
+            id=model.id,
+            name=model.name,
+            description=model.description,
+            department_id=model.department_id,
+            is_active=model.is_active,
+            department_name=model.department.name if model.department else None,
+        )
+
+    def get_all(self) -> List[PositionEntity]:
+        models = self._session.query(PositionModel).options(joinedload(PositionModel.department)).all()
+        return [self._to_entity(m) for m in models]
+
+    def create(
+        self, name: str, description: str, department_id: Optional[int], is_active: bool = True
+    ) -> PositionEntity:
+        model = PositionModel(
+            name=name,
+            description=description,
+            department_id=department_id,
+            is_active=is_active,
+        )
+        self._session.add(model)
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
+
+
+class EmployeeRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def _to_entity(self, model: EmployeeModel) -> EmployeeEntity:
+        return EmployeeEntity(
+            id=model.id,
+            employee_id=model.employee_id,
+            first_name=model.first_name,
+            middle_name=model.middle_name,
+            last_name=model.last_name,
+            suffix=model.suffix,
+            birth_date=model.birth_date,
+            gender=model.gender,
+            phone=model.phone,
+            email=model.email,
+            address=model.address,
+            photo_path=model.photo_path,
+            department_id=model.department_id,
+            department_name=model.department.name if model.department else None,
+            position_id=model.position_id,
+            position_name=model.position.name if model.position else None,
+            employment_type=model.employment_type,
+            date_hired=model.date_hired,
+            status=model.status,
+            supervisor_id=model.supervisor_id,
+            grace_period_mins=model.grace_period_mins,
+            overtime_eligible=model.overtime_eligible,
+            rest_day=model.rest_day,
+        )
+
+    def get_all(self) -> List[EmployeeEntity]:
+        models = (
+            self._session.query(EmployeeModel)
+            .options(joinedload(EmployeeModel.department), joinedload(EmployeeModel.position))
+            .all()
+        )
+        return [self._to_entity(m) for m in models]
+
+    def create(self, **kwargs) -> EmployeeEntity:
+        model = EmployeeModel(**kwargs)
+        self._session.add(model)
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
