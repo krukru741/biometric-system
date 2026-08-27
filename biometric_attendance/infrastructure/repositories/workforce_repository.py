@@ -33,6 +33,17 @@ class DepartmentRepository:
         self._session.refresh(model)
         return self._to_entity(model)
 
+    def update(self, id: int, name: str, description: str, is_active: bool = True) -> Optional[DepartmentEntity]:
+        model = self._session.query(DepartmentModel).filter_by(id=id).first()
+        if model is None:
+            return None
+        model.name = name
+        model.description = description
+        model.is_active = is_active
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
+
 
 class PositionRepository:
     def __init__(self, session: Session) -> None:
@@ -62,6 +73,25 @@ class PositionRepository:
             is_active=is_active,
         )
         self._session.add(model)
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
+
+    def update(
+        self, id: int, name: str, description: str, department_id: Optional[int], is_active: bool = True
+    ) -> Optional[PositionEntity]:
+        model = (
+            self._session.query(PositionModel)
+            .options(joinedload(PositionModel.department))
+            .filter_by(id=id)
+            .first()
+        )
+        if model is None:
+            return None
+        model.name = name
+        model.description = description
+        model.department_id = department_id
+        model.is_active = is_active
         self._session.commit()
         self._session.refresh(model)
         return self._to_entity(model)
@@ -112,3 +142,27 @@ class EmployeeRepository:
         self._session.commit()
         self._session.refresh(model)
         return self._to_entity(model)
+
+    def update(self, id: int, **kwargs) -> Optional[EmployeeEntity]:
+        model = (
+            self._session.query(EmployeeModel)
+            .options(joinedload(EmployeeModel.department), joinedload(EmployeeModel.position))
+            .filter_by(id=id)
+            .first()
+        )
+        if model is None:
+            return None
+        for key, value in kwargs.items():
+            if hasattr(model, key):
+                setattr(model, key, value)
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
+
+    def archive(self, id: int) -> bool:
+        model = self._session.query(EmployeeModel).filter_by(id=id).first()
+        if model is None:
+            return False
+        model.status = EmploymentStatus.ARCHIVED
+        self._session.commit()
+        return True

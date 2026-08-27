@@ -1,7 +1,7 @@
 """ViewModels for Workforce management (Departments, Positions, Employees)."""
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from PySide6.QtCore import QObject, Signal, Slot
 
@@ -29,6 +29,13 @@ class DepartmentsViewModel(QObject):
     def create_department(self, name: str, description: str) -> None:
         try:
             self._service.create_department(name=name, description=description)
+            self.load_departments()
+        except Exception as e:
+            self.error_occurred.emit(str(e))
+
+    def update_department(self, id: int, name: str, description: str) -> None:
+        try:
+            self._service.update_department(id=id, name=name, description=description)
             self.load_departments()
         except Exception as e:
             self.error_occurred.emit(str(e))
@@ -63,6 +70,14 @@ class PositionsViewModel(QObject):
         except Exception as e:
             self.error_occurred.emit(str(e))
 
+    def update_position(self, id: int, name: str, description: str, department_id: int) -> None:
+        try:
+            dept_id = department_id if department_id > 0 else None
+            self._service.update_position(id=id, name=name, description=description, department_id=dept_id)
+            self.load_data()
+        except Exception as e:
+            self.error_occurred.emit(str(e))
+
 
 class EmployeesViewModel(QObject):
     error_occurred = Signal(str)
@@ -89,11 +104,25 @@ class EmployeesViewModel(QObject):
             self.error_occurred.emit(str(e))
 
     def create_employee(self, data: dict) -> None:
-        """Create an employee from a dictionary of fields.
-        We don't use @Slot here to easily pass a dictionary from the dialog.
-        """
+        """Create an employee from a dictionary of fields."""
         try:
             self._service.create_employee(**data)
+            self.load_data()
+        except Exception as e:
+            self.error_occurred.emit(str(e))
+
+    def update_employee(self, id: int, data: dict) -> None:
+        """Update an existing employee from a dictionary of fields."""
+        try:
+            self._service.update_employee(id=id, **data)
+            self.load_data()
+        except Exception as e:
+            self.error_occurred.emit(str(e))
+
+    def archive_employee(self, id: int) -> None:
+        """Set an employee status to ARCHIVED."""
+        try:
+            self._service.archive_employee(id=id)
             self.load_data()
         except Exception as e:
             self.error_occurred.emit(str(e))
