@@ -315,6 +315,9 @@ class EmployeeModel(Base):
     supervisor: Mapped[Optional["EmployeeModel"]] = relationship(
         "EmployeeModel", remote_side=[id]
     )
+    schedules: Mapped[list["EmployeeScheduleModel"]] = relationship(
+        "EmployeeScheduleModel", back_populates="employee"
+    )
 
 
 class ShiftTemplateModel(Base):
