@@ -12,7 +12,7 @@ from __future__ import annotations
 import datetime
 from typing import Optional
 
-from sqlalchemy import (
+from sqlalchemy import (Time, UniqueConstraint)
     Boolean,
     Column,
     Date,
@@ -31,6 +31,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, rela
 from biometric_attendance.core.enums.permissions import Permission
 from biometric_attendance.core.enums.roles import RoleName
 from biometric_attendance.core.enums.workforce import EmploymentStatus, EmploymentType
+from biometric_attendance.core.enums.scheduling import HolidayType, ScheduleStatus
 
 
 class Base(DeclarativeBase):
@@ -312,4 +313,62 @@ class EmployeeModel(Base):
     )
     supervisor: Mapped[Optional["EmployeeModel"]] = relationship(
         "EmployeeModel", remote_side=[id]
+    )
+
+
+class ShiftTemplateModel(Base):
+    __tablename__ = "shift_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    start_time: Mapped[datetime.time] = mapped_column(Time, nullable=False)
+    end_time: Mapped[datetime.time] = mapped_column(Time, nullable=False)
+    break_start: Mapped[Optional[datetime.time]] = mapped_column(Time)
+    break_end: Mapped[Optional[datetime.time]] = mapped_column(Time)
+    grace_period_mins: Mapped[int] = mapped_column(Integer, default=0)
+    late_threshold_mins: Mapped[int] = mapped_column(Integer, default=0)
+    early_out_threshold_mins: Mapped[int] = mapped_column(Integer, default=0)
+    overtime_threshold_mins: Mapped[int] = mapped_column(Integer, default=0)
+    is_overnight: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    schedules: Mapped[list["EmployeeScheduleModel"]] = relationship(
+        "EmployeeScheduleModel", back_populates="shift_template"
+    )
+
+
+class HolidayModel(Base):
+    __tablename__ = "holidays"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
+    holiday_type: Mapped["HolidayType"] = mapped_column(Enum("HolidayType", create_constraint=False, native_enum=False), nullable=False)
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=True)
+    notes: Mapped[Optional[str]] = mapped_column(String(255))
+
+
+class EmployeeScheduleModel(Base):
+    __tablename__ = "employee_schedules"
+    __table_args__ = (
+        UniqueConstraint("employee_id", "date", name="uq_employee_schedule_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), nullable=False, index=True)
+    shift_template_id: Mapped[Optional[int]] = mapped_column(ForeignKey("shift_templates.id"))
+    date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
+    is_rest_day: Mapped[bool] = mapped_column(Boolean, default=False)
+    schedule_status: Mapped["ScheduleStatus"] = mapped_column(
+        Enum("ScheduleStatus", create_constraint=False, native_enum=False),
+        default="Active",
+    )
+    notes: Mapped[Optional[str]] = mapped_column(String(255))
+    # Override times — nullable; UI to set them deferred to a later phase
+    override_start_time: Mapped[Optional[datetime.time]] = mapped_column(Time)
+    override_end_time: Mapped[Optional[datetime.time]] = mapped_column(Time)
+
+    employee: Mapped["EmployeeModel"] = relationship("EmployeeModel", back_populates="schedules")
+    shift_template: Mapped[Optional["ShiftTemplateModel"]] = relationship(
+        "ShiftTemplateModel", back_populates="schedules"
     )
