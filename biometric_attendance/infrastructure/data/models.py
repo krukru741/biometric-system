@@ -292,11 +292,11 @@ class EmployeeModel(Base):
     department_id: Mapped[Optional[int]] = mapped_column(ForeignKey("departments.id"), index=True)
     position_id: Mapped[Optional[int]] = mapped_column(ForeignKey("positions.id"))
     employment_type: Mapped[EmploymentType] = mapped_column(
-        Enum(EmploymentType), default=EmploymentType.FULL_TIME
+        Enum(EmploymentType, values_callable=lambda x: [e.value for e in x]), default=EmploymentType.FULL_TIME
     )
     date_hired: Mapped[Optional[datetime.date]] = mapped_column(Date)
     status: Mapped[EmploymentStatus] = mapped_column(
-        Enum(EmploymentStatus), default=EmploymentStatus.ACTIVE, index=True
+        Enum(EmploymentStatus, values_callable=lambda x: [e.value for e in x]), default=EmploymentStatus.ACTIVE, index=True
     )
     supervisor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("employees.id"))
 
@@ -347,7 +347,9 @@ class HolidayModel(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
-    holiday_type: Mapped[HolidayType] = mapped_column(Enum(HolidayType), nullable=False)
+    holiday_type: Mapped[HolidayType] = mapped_column(
+        Enum(HolidayType, values_callable=lambda x: [e.value for e in x]), nullable=False
+    )
     is_paid: Mapped[bool] = mapped_column(Boolean, default=True)
     notes: Mapped[Optional[str]] = mapped_column(String(255))
 
@@ -364,7 +366,7 @@ class EmployeeScheduleModel(Base):
     date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
     is_rest_day: Mapped[bool] = mapped_column(Boolean, default=False)
     schedule_status: Mapped[ScheduleStatus] = mapped_column(
-        Enum(ScheduleStatus),
+        Enum(ScheduleStatus, values_callable=lambda x: [e.value for e in x]),
         default=ScheduleStatus.ACTIVE,
     )
     notes: Mapped[Optional[str]] = mapped_column(String(255))
