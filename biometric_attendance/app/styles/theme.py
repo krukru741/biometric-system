@@ -229,9 +229,10 @@ QPushButton#SecondaryButton {{
     color: {PRIMARY};
     border: 1.5px solid {PRIMARY};
     border-radius: {BUTTON_BORDER_RADIUS}px;
-    padding: 8px 20px;
+    padding: 5px 12px;
     font-size: {FONT_SIZE_BASE}px;
     font-weight: 500;
+    min-width: 60px;
 }}
 
 QPushButton#SecondaryButton:hover {{

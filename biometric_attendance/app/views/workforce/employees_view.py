@@ -245,7 +245,8 @@ class EmployeesView(QWidget):
             ["Emp ID", "Name", "Department", "Position", "Type", "Status", "Email", "Actions"]
         )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.Interactive)
+        self.table.setColumnWidth(7, 190)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
@@ -332,6 +333,7 @@ class EmployeesView(QWidget):
 
             edit_btn = QPushButton("Edit")
             edit_btn.setObjectName("SecondaryButton")
+            edit_btn.setMinimumWidth(70)
             edit_btn.clicked.connect(lambda checked, e=emp: self._on_edit_clicked(e))
 
             archive_btn = QPushButton("Archive")
@@ -342,6 +344,7 @@ class EmployeesView(QWidget):
             actions_layout.addWidget(edit_btn)
             actions_layout.addWidget(archive_btn)
             self.table.setCellWidget(row, 7, actions_widget)
+        self.table.setColumnWidth(7, 190)
 
     def _on_error(self, message):
         QMessageBox.critical(self, "Error", message)

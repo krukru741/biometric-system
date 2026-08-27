@@ -124,7 +124,8 @@ class PositionsView(QWidget):
         self.table.setHorizontalHeaderLabels(["ID", "Name", "Department", "Description", "Status", "Actions"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Interactive)
+        self.table.setColumnWidth(5, 100)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
@@ -180,8 +181,10 @@ class PositionsView(QWidget):
             self.table.setItem(row, 4, QTableWidgetItem("Active" if pos.is_active else "Inactive"))
             edit_btn = QPushButton("Edit")
             edit_btn.setObjectName("SecondaryButton")
+            edit_btn.setMinimumWidth(70)
             edit_btn.clicked.connect(lambda checked, p=pos: self._on_edit_clicked(p))
             self.table.setCellWidget(row, 5, edit_btn)
+        self.table.setColumnWidth(5, 100)
 
     def _on_error(self, message):
         QMessageBox.critical(self, "Error", message)

@@ -107,7 +107,8 @@ class DepartmentsView(QWidget):
         self.table.setHorizontalHeaderLabels(["ID", "Name", "Description", "Status", "Actions"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Interactive)
+        self.table.setColumnWidth(4, 100)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
@@ -148,8 +149,10 @@ class DepartmentsView(QWidget):
             self.table.setItem(row, 3, QTableWidgetItem("Active" if dept.is_active else "Inactive"))
             edit_btn = QPushButton("Edit")
             edit_btn.setObjectName("SecondaryButton")
+            edit_btn.setMinimumWidth(70)
             edit_btn.clicked.connect(lambda checked, d=dept: self._on_edit_clicked(d))
             self.table.setCellWidget(row, 4, edit_btn)
+        self.table.setColumnWidth(4, 100)
 
     def _on_error(self, message):
         QMessageBox.critical(self, "Error", message)
