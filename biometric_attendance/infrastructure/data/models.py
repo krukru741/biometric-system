@@ -12,7 +12,7 @@ from __future__ import annotations
 import datetime
 from typing import Optional
 
-from sqlalchemy import (Time, UniqueConstraint)
+from sqlalchemy import (
     Boolean,
     Column,
     Date,
@@ -23,6 +23,7 @@ from sqlalchemy import (Time, UniqueConstraint)
     String,
     Table,
     Text,
+    Time,
     UniqueConstraint,
     func,
 )
