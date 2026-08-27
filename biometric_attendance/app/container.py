@@ -104,4 +104,6 @@ class AppContainer(containers.DeclarativeContainer):
         shift_template_repository=shift_template_repository,
         holiday_repository=holiday_repository,
         employee_schedule_repository=employee_schedule_repository,
+        employee_repository=employee_repository,
+        department_repository=department_repository,
     )
