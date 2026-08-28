@@ -42,6 +42,15 @@ from biometric_attendance.app.views.attendance.attendance_records_view import At
 from biometric_attendance.app.views.attendance.attendance_corrections_view import AttendanceCorrectionsView
 from biometric_attendance.app.views.attendance.attendance_summary_view import AttendanceSummaryView
 
+from biometric_attendance.app.viewmodels.biometric_vms import (
+    BiometricEnrollmentViewModel,
+    BiometricDevicesViewModel,
+    BiometricSyncViewModel,
+)
+from biometric_attendance.app.views.biometrics.biometric_enrollment_view import BiometricEnrollmentView
+from biometric_attendance.app.views.biometrics.biometric_devices_view import BiometricDevicesView
+from biometric_attendance.app.views.biometrics.biometric_sync_view import BiometricSyncView
+
 from biometric_attendance.app.viewmodels.workforce_vms import DepartmentsViewModel, PositionsViewModel, EmployeesViewModel
 from biometric_attendance.core.dtos.auth_dtos import SessionUser
 from biometric_attendance.app.container import AppContainer
@@ -208,5 +217,23 @@ class AppShell(QMainWindow):
             return AttendanceCorrectionsView(vm, logged_in_user_id=self._user.id)
         elif page_key == "attendance_summary":
             return AttendanceSummaryView()
+        elif page_key == "biometric_enrollment":
+            vm = BiometricEnrollmentViewModel(
+                workforce_service=self._container.workforce_service(),
+                enrollment_service=self._container.biometric_enrollment_service(),
+                adapter_factory=self._container.mock_adapter_factory,
+            )
+            return BiometricEnrollmentView(vm)
+        elif page_key == "biometric_devices":
+            vm = BiometricDevicesViewModel(
+                device_service=self._container.biometric_device_service(),
+            )
+            return BiometricDevicesView(vm)
+        elif page_key == "biometric_sync":
+            vm = BiometricSyncViewModel(
+                device_service=self._container.biometric_device_service(),
+                sync_service=self._container.biometric_sync_service(),
+            )
+            return BiometricSyncView(vm)
         title = _PAGE_TITLES.get(page_key, page_key.replace("_", " ").title())
         return _PlaceholderPage(title)

@@ -20,6 +20,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Table,
     Text,
@@ -128,6 +129,75 @@ class UserModel(Base):
     roles: Mapped[list[RoleModel]] = relationship(
         "RoleModel", secondary=user_roles_table, back_populates="users", lazy="joined"
     )
+
+# ── Biometrics Domain ─────────────────────────────────────────────────────────
+
+from biometric_attendance.core.enums.biometrics import (
+    BiometricLogType,
+    DeviceStatus,
+    FingerType,
+)
+
+class EmployeeBiometricModel(Base):
+    __tablename__ = "employee_biometrics"
+    __table_args__ = (
+        UniqueConstraint("employee_id", "finger_type", name="uq_emp_finger"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    finger_type: Mapped[FingerType] = mapped_column(
+        Enum(FingerType, name="fingertype", values_callable=lambda x: [e.value for e in x]),
+        nullable=False
+    )
+    template: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    template_format: Mapped[str] = mapped_column(String(50), nullable=False, default="mock")
+    device_id: Mapped[int | None] = mapped_column(ForeignKey("biometric_devices.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    employee: Mapped[EmployeeModel] = relationship(backref="biometrics")
+
+
+class BiometricDeviceModel(Base):
+    __tablename__ = "biometric_devices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    device_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    ip_address: Mapped[str] = mapped_column(String(50), nullable=False)
+    port: Mapped[int] = mapped_column(Integer, nullable=False, default=4370)
+    model: Mapped[str] = mapped_column(String(100), nullable=False, default="Mock Scanner")
+    serial_number: Mapped[str] = mapped_column(String(100), nullable=False, default="MOCK-000")
+    firmware_version: Mapped[str] = mapped_column(String(50), nullable=False, default="1.0.0")
+    status: Mapped[DeviceStatus] = mapped_column(
+        Enum(DeviceStatus, name="devicestatus", values_callable=lambda x: [e.value for e in x]),
+        nullable=False, default=DeviceStatus.UNKNOWN
+    )
+    last_sync_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+class BiometricLogModel(Base):
+    __tablename__ = "biometric_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("biometric_devices.id", ondelete="CASCADE"), nullable=False, index=True)
+    log_type: Mapped[BiometricLogType] = mapped_column(
+        Enum(BiometricLogType, name="biometriclogtype", values_callable=lambda x: [e.value for e in x]),
+        nullable=False
+    )
+    message: Mapped[str] = mapped_column(String(255), nullable=False)
+    raw_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    timestamp: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, default=datetime.datetime.now)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+    device: Mapped[BiometricDeviceModel] = relationship(backref="logs")
+
+
 
 
 # ── Seed data ─────────────────────────────────────────────────────────────────

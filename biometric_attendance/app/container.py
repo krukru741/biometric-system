@@ -159,3 +159,62 @@ class AppContainer(containers.DeclarativeContainer):
         schedule_resolver=schedule_resolver,
         calculation_service=calculation_service,
     )
+
+    # ── Biometrics ────────────────────────────────────────────────────────────
+
+    employee_biometric_repository = providers.Factory(
+        "biometric_attendance.infrastructure.repositories.biometric_repository.EmployeeBiometricRepository",
+        session=db_session,
+    )
+
+    biometric_device_repository = providers.Factory(
+        "biometric_attendance.infrastructure.repositories.biometric_repository.BiometricDeviceRepository",
+        session=db_session,
+    )
+
+    biometric_log_repository = providers.Factory(
+        "biometric_attendance.infrastructure.repositories.biometric_repository.BiometricLogRepository",
+        session=db_session,
+    )
+
+    encryption_service = providers.Singleton(
+        "biometric_attendance.application.biometrics.encryption_service.BiometricEncryptionService",
+    )
+
+    biometric_enrollment_service = providers.Factory(
+        "biometric_attendance.application.biometrics.enrollment_service.BiometricEnrollmentService",
+        repository=employee_biometric_repository,
+        encryption_service=encryption_service,
+    )
+
+    # Note: adapter factory just returns a Mock adapter
+    mock_adapter_factory = providers.Callable(
+        lambda e_strs: __import__("biometric_attendance.infrastructure.adapters.mock_biometric_adapter").infrastructure.adapters.mock_biometric_adapter.MockBiometricAdapter(e_strs)
+    )
+
+    biometric_device_service = providers.Factory(
+        "biometric_attendance.application.biometrics.device_service.BiometricDeviceService",
+        device_repo=biometric_device_repository,
+        log_repo=biometric_log_repository,
+        # A simple lambda that ignores device_entity and just creates a mock adapter. 
+        adapter_factory=providers.Callable(
+            lambda *args: __import__("biometric_attendance.infrastructure.adapters.mock_biometric_adapter", fromlist=["MockBiometricAdapter"]).MockBiometricAdapter([])
+        ),
+    )
+
+    biometric_sync_service = providers.Factory(
+        "biometric_attendance.application.biometrics.sync_service.BiometricSyncService",
+        device_repo=biometric_device_repository,
+        log_repo=biometric_log_repository,
+        employee_repo=employee_repository,
+        biometric_repo=employee_biometric_repository,
+        attendance_event_svc=attendance_event_service,
+        encryption_service=encryption_service,
+        # The adapter factory for sync needs the list of active employee ID strings to generate mock events
+        adapter_factory=providers.Callable(
+            lambda *args: __import__("biometric_attendance.infrastructure.adapters.mock_biometric_adapter", fromlist=["MockBiometricAdapter"]).MockBiometricAdapter(
+                # we'll inject employee_strs in the VM when we pull logs, or we can just mock it here
+                []
+            )
+        )
+    )
