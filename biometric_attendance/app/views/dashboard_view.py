@@ -141,7 +141,7 @@ class DashboardView(QScrollArea):
         note.setWordWrap(True)
         note.setStyleSheet(
             f"background-color: rgba(107,53,42,0.07); border-radius: 8px; "
-            f"padding: 12px 16px; color: {theme.MUTED};"
+            f"padding: 12px 16px; color: {theme.TEXT_MUTED};"
         )
         layout.addWidget(note)
 
