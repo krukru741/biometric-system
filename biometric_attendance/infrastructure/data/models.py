@@ -33,6 +33,13 @@ from biometric_attendance.core.enums.permissions import Permission
 from biometric_attendance.core.enums.roles import RoleName
 from biometric_attendance.core.enums.workforce import EmploymentStatus, EmploymentType
 from biometric_attendance.core.enums.scheduling import HolidayType, ScheduleStatus
+from biometric_attendance.core.enums.attendance import (
+    AttendanceEventType,
+    AttendanceSource,
+    AttendanceStatus,
+    CorrectionType,
+    CorrectionStatus,
+)
 
 
 class Base(DeclarativeBase):
@@ -378,3 +385,120 @@ class EmployeeScheduleModel(Base):
     shift_template: Mapped[Optional["ShiftTemplateModel"]] = relationship(
         "ShiftTemplateModel", back_populates="schedules"
     )
+
+
+# ── Attendance Models ─────────────────────────────────────────────────────────
+
+
+class AttendanceEventModel(Base):
+    """Raw, immutable biometric/manual scan record. Never overwrite."""
+    __tablename__ = "attendance_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), nullable=False, index=True)
+    device_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    event_type: Mapped[AttendanceEventType] = mapped_column(
+        Enum(AttendanceEventType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
+    timestamp: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, index=True)
+    biometric_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    source: Mapped[AttendanceSource] = mapped_column(
+        Enum(AttendanceSource, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=AttendanceSource.MANUAL,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+    employee: Mapped["EmployeeModel"] = relationship("EmployeeModel")
+
+
+class AttendanceRecordModel(Base):
+    """Processed daily attendance result derived from raw events."""
+    __tablename__ = "attendance_records"
+    __table_args__ = (
+        UniqueConstraint("employee_id", "date", name="uq_attendance_record_employee_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), nullable=False, index=True)
+    schedule_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("employee_schedules.id"), nullable=True
+    )
+    date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
+
+    # Times stored as full DateTime (not just Time) to handle overnight correctly
+    time_in: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, nullable=True)
+    break_out: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, nullable=True)
+    break_in: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, nullable=True)
+    time_out: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, nullable=True)
+
+    worked_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    late_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    undertime_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    overtime_minutes: Mapped[int] = mapped_column(Integer, default=0)
+
+    status: Mapped[AttendanceStatus] = mapped_column(
+        Enum(AttendanceStatus, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=AttendanceStatus.INCOMPLETE,
+        index=True,
+    )
+
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    employee: Mapped["EmployeeModel"] = relationship("EmployeeModel")
+    schedule: Mapped[Optional["EmployeeScheduleModel"]] = relationship("EmployeeScheduleModel")
+    corrections: Mapped[list["AttendanceCorrectionModel"]] = relationship(
+        "AttendanceCorrectionModel", back_populates="attendance_record", cascade="all, delete-orphan"
+    )
+
+
+class AttendanceCorrectionModel(Base):
+    """Layered correction on top of an AttendanceRecord — original event is never overwritten."""
+    __tablename__ = "attendance_corrections"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    attendance_record_id: Mapped[int] = mapped_column(
+        ForeignKey("attendance_records.id"), nullable=False, index=True
+    )
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), nullable=False, index=True)
+    correction_type: Mapped[CorrectionType] = mapped_column(
+        Enum(CorrectionType, values_callable=lambda x: [e.value for e in x]), nullable=False
+    )
+    original_value: Mapped[str] = mapped_column(String(255), nullable=False)
+    requested_value: Mapped[str] = mapped_column(String(255), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    attachment_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    status: Mapped[CorrectionStatus] = mapped_column(
+        Enum(CorrectionStatus, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=CorrectionStatus.PENDING,
+        index=True,
+    )
+    requested_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    requested_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False)
+    reviewed_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, nullable=True)
+    review_comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    attendance_record: Mapped["AttendanceRecordModel"] = relationship(
+        "AttendanceRecordModel", back_populates="corrections"
+    )
+    employee: Mapped["EmployeeModel"] = relationship("EmployeeModel", foreign_keys=[employee_id])
+    requester: Mapped["UserModel"] = relationship("UserModel", foreign_keys=[requested_by])
+    reviewer: Mapped[Optional["UserModel"]] = relationship("UserModel", foreign_keys=[reviewed_by])
+
