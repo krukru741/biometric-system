@@ -32,6 +32,15 @@ from biometric_attendance.app.views.scheduling.shift_templates_view import Shift
 from biometric_attendance.app.views.scheduling.holidays_view import HolidaysView
 from biometric_attendance.app.views.scheduling.schedule_calendar_view import ScheduleCalendarView
 from biometric_attendance.app.views.scheduling.employee_schedules_view import EmployeeSchedulesView
+from biometric_attendance.app.viewmodels.attendance_vms import (
+    AttendanceLiveViewModel,
+    AttendanceRecordsViewModel,
+    AttendanceCorrectionsViewModel,
+)
+from biometric_attendance.app.views.attendance.live_attendance_view import LiveAttendanceView
+from biometric_attendance.app.views.attendance.attendance_records_view import AttendanceRecordsView
+from biometric_attendance.app.views.attendance.attendance_corrections_view import AttendanceCorrectionsView
+from biometric_attendance.app.views.attendance.attendance_summary_view import AttendanceSummaryView
 
 from biometric_attendance.app.viewmodels.workforce_vms import DepartmentsViewModel, PositionsViewModel, EmployeesViewModel
 from biometric_attendance.core.dtos.auth_dtos import SessionUser
@@ -178,5 +187,26 @@ class AppShell(QMainWindow):
         elif page_key == "employee_schedules":
             vm = EmployeeSchedulesViewModel(self._container.scheduling_service())
             return EmployeeSchedulesView(vm)
+        elif page_key == "attendance_live":
+            vm = AttendanceLiveViewModel(
+                event_service=self._container.attendance_event_service(),
+                employee_repository=self._container.employee_repository(),
+            )
+            return LiveAttendanceView(vm)
+        elif page_key == "attendance_records":
+            vm = AttendanceRecordsViewModel(
+                record_repository=self._container.attendance_record_repository(),
+                employee_repository=self._container.employee_repository(),
+            )
+            return AttendanceRecordsView(vm)
+        elif page_key == "attendance_corrections":
+            vm = AttendanceCorrectionsViewModel(
+                correction_service=self._container.attendance_correction_service(),
+                employee_repository=self._container.employee_repository(),
+                record_repository=self._container.attendance_record_repository(),
+            )
+            return AttendanceCorrectionsView(vm, logged_in_user_id=self._user.id)
+        elif page_key == "attendance_summary":
+            return AttendanceSummaryView()
         title = _PAGE_TITLES.get(page_key, page_key.replace("_", " ").title())
         return _PlaceholderPage(title)

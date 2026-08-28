@@ -107,3 +107,55 @@ class AppContainer(containers.DeclarativeContainer):
         employee_repository=employee_repository,
         department_repository=department_repository,
     )
+
+    # ── Attendance ────────────────────────────────────────────────────────────
+
+    attendance_event_repository = providers.Factory(
+        "biometric_attendance.infrastructure.repositories.attendance_repository.AttendanceEventRepository",
+        session=db_session,
+    )
+
+    attendance_record_repository = providers.Factory(
+        "biometric_attendance.infrastructure.repositories.attendance_repository.AttendanceRecordRepository",
+        session=db_session,
+    )
+
+    attendance_correction_repository = providers.Factory(
+        "biometric_attendance.infrastructure.repositories.attendance_repository.AttendanceCorrectionRepository",
+        session=db_session,
+    )
+
+    schedule_resolver = providers.Factory(
+        "biometric_attendance.application.attendance.schedule_resolver.ScheduleResolver",
+        schedule_repository=employee_schedule_repository,
+        shift_repository=shift_template_repository,
+        holiday_repository=holiday_repository,
+    )
+
+    calculation_service = providers.Factory(
+        "biometric_attendance.application.attendance.calculation_service.AttendanceCalculationService",
+    )
+
+    attendance_processor = providers.Factory(
+        "biometric_attendance.application.attendance.attendance_processor.AttendanceProcessor",
+        event_repository=attendance_event_repository,
+        record_repository=attendance_record_repository,
+        employee_repository=employee_repository,
+        schedule_resolver=schedule_resolver,
+        calculation_service=calculation_service,
+    )
+
+    attendance_event_service = providers.Factory(
+        "biometric_attendance.application.attendance.event_service.AttendanceEventService",
+        event_repository=attendance_event_repository,
+        processor=attendance_processor,
+    )
+
+    attendance_correction_service = providers.Factory(
+        "biometric_attendance.application.attendance.correction_service.AttendanceCorrectionService",
+        correction_repository=attendance_correction_repository,
+        record_repository=attendance_record_repository,
+        employee_repository=employee_repository,
+        schedule_resolver=schedule_resolver,
+        calculation_service=calculation_service,
+    )
