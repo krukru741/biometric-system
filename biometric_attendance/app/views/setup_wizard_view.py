@@ -42,16 +42,18 @@ class _FieldRow(QWidget):
             self.input = QLineEdit()
             self.input.setPlaceholderText(placeholder)
             self.input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.input.setStyleSheet("border-radius: 6px 0px 0px 6px;")
+            self.input.setStyleSheet(f"border-top-right-radius: 0; border-bottom-right-radius: 0;")
             input_layout.addWidget(self.input)
 
-            self._show_pw_btn = QPushButton("👁")
-            self._show_pw_btn.setFixedSize(38, 38)
+            from biometric_attendance.app.styles.icons import icon
+            self._show_pw_btn = QPushButton()
+            self._show_pw_btn.setIcon(icon("eye", size=18))
+            self._show_pw_btn.setFixedSize(40, 40)
             self._show_pw_btn.setCheckable(True)
-            self._show_pw_btn.setObjectName("GhostButton")
+            self._show_pw_btn.setObjectName("IconButton")
             self._show_pw_btn.setStyleSheet(
-                f"font-size: 16px; border: 1.5px solid {theme.BORDER}; "
-                f"border-left: none; border-radius: 0px 6px 6px 0px;"
+                f"border: 1px solid {theme.BORDER}; border-left: none; "
+                f"border-top-left-radius: 0; border-bottom-left-radius: 0;"
             )
             self._show_pw_btn.clicked.connect(self._toggle_password_visibility)
             input_layout.addWidget(self._show_pw_btn)
@@ -69,10 +71,13 @@ class _FieldRow(QWidget):
         layout.addWidget(self.error_lbl)
 
     def _toggle_password_visibility(self, checked: bool) -> None:
+        from biometric_attendance.app.styles.icons import icon
         if checked:
             self.input.setEchoMode(QLineEdit.EchoMode.Normal)
+            self._show_pw_btn.setIcon(icon("eye-off", size=18))
         else:
             self.input.setEchoMode(QLineEdit.EchoMode.Password)
+            self._show_pw_btn.setIcon(icon("eye", size=18))
 
     def value(self) -> str:
         return self.input.text()
@@ -126,21 +131,24 @@ class SetupWizardView(QWidget):
         card = QFrame()
         card.setObjectName("Card")
         card.setFixedWidth(460)
+        theme.apply_card_shadow(card, level=2)
+        
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(40, 40, 40, 40)
-        card_layout.setSpacing(16)
+        card_layout.setContentsMargins(theme.SPACE_3XL, theme.SPACE_3XL, theme.SPACE_3XL, theme.SPACE_3XL)
+        card_layout.setSpacing(theme.SPACE_LG)
 
         # Header
-        icon = QLabel("◈")
+        from biometric_attendance.app.styles.icons import pixmap
+        icon = QLabel()
+        icon.setPixmap(pixmap("shield", color=theme.PRIMARY, size=48))
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon.setStyleSheet(f"color: {theme.PRIMARY}; font-size: 48px; background: transparent;")
         card_layout.addWidget(icon)
 
         heading = QLabel("Welcome — Create Administrator Account")
         heading.setObjectName("HeadingLabel")
         heading.setWordWrap(True)
         heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        heading.setStyleSheet(f"font-size: 18px; background: transparent;")
+        heading.setStyleSheet(f"font-size: {theme.TS_PAGE_TITLE}px; background: transparent;")
         card_layout.addWidget(heading)
 
         sub = QLabel(
@@ -152,7 +160,7 @@ class SetupWizardView(QWidget):
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(sub)
 
-        card_layout.addSpacing(8)
+        card_layout.addSpacing(theme.SPACE_SM)
 
         # Form fields
         fields: list[tuple[str, str, str, bool]] = [
