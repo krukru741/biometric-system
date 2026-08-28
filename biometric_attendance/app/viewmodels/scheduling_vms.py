@@ -168,3 +168,27 @@ class ScheduleCalendarViewModel(QObject):
             self.load_month(self._year, self._month)
         except Exception as e:
             self.error_occurred.emit(str(e))
+
+
+class EmployeeSchedulesViewModel(QObject):
+    error_occurred = Signal(str)
+    schedules_loaded = Signal(list)
+    employees_loaded = Signal(list)
+
+    def __init__(self, service: SchedulingService) -> None:
+        super().__init__()
+        self._service = service
+
+    def load_employees(self) -> None:
+        try:
+            emps = self._service._employees.get_all()
+            self.employees_loaded.emit(emps)
+        except Exception as e:
+            self.error_occurred.emit(str(e))
+
+    def load_schedules(self, employee_id: Optional[int] = None, start_date: Optional[dt.date] = None, end_date: Optional[dt.date] = None) -> None:
+        try:
+            schedules = self._service.get_schedules(employee_id=employee_id, start_date=start_date, end_date=end_date)
+            self.schedules_loaded.emit(schedules)
+        except Exception as e:
+            self.error_occurred.emit(str(e))

@@ -82,6 +82,16 @@ class SchedulingService:
     ) -> List[EmployeeScheduleEntity]:
         return self._schedules.get_by_employee(employee_id=employee_id, year=year, month=month)
 
+    def get_schedules(
+        self,
+        employee_id: Optional[int] = None,
+        start_date: Optional[dt.date] = None,
+        end_date: Optional[dt.date] = None,
+    ) -> List[EmployeeScheduleEntity]:
+        return self._schedules.get_schedules(
+            employee_id=employee_id, start_date=start_date, end_date=end_date
+        )
+
     def assign_schedule(
         self,
         employee_id: int,

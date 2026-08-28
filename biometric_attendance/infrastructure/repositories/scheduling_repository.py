@@ -197,6 +197,23 @@ class EmployeeScheduleRepository:
         )
         return [self._to_entity(r) for r in rows]
 
+    def get_schedules(
+        self,
+        employee_id: Optional[int] = None,
+        start_date: Optional[dt.date] = None,
+        end_date: Optional[dt.date] = None,
+    ) -> List[EmployeeScheduleEntity]:
+        query = self._base_query()
+        if employee_id is not None:
+            query = query.filter(EmployeeScheduleModel.employee_id == employee_id)
+        if start_date is not None:
+            query = query.filter(EmployeeScheduleModel.date >= start_date)
+        if end_date is not None:
+            query = query.filter(EmployeeScheduleModel.date <= end_date)
+        
+        query = query.order_by(EmployeeScheduleModel.date.desc(), EmployeeScheduleModel.employee_id)
+        return [self._to_entity(r) for r in query.all()]
+
     def create(self, **kwargs) -> EmployeeScheduleEntity:
         m = EmployeeScheduleModel(**kwargs)
         self._session.add(m)

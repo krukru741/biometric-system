@@ -26,10 +26,12 @@ from biometric_attendance.app.viewmodels.scheduling_vms import (
     ShiftTemplatesViewModel,
     HolidaysViewModel,
     ScheduleCalendarViewModel,
+    EmployeeSchedulesViewModel,
 )
 from biometric_attendance.app.views.scheduling.shift_templates_view import ShiftTemplatesView
 from biometric_attendance.app.views.scheduling.holidays_view import HolidaysView
 from biometric_attendance.app.views.scheduling.schedule_calendar_view import ScheduleCalendarView
+from biometric_attendance.app.views.scheduling.employee_schedules_view import EmployeeSchedulesView
 
 from biometric_attendance.app.viewmodels.workforce_vms import DepartmentsViewModel, PositionsViewModel, EmployeesViewModel
 from biometric_attendance.core.dtos.auth_dtos import SessionUser
@@ -173,5 +175,8 @@ class AppShell(QMainWindow):
         elif page_key == "schedule_calendar":
             vm = ScheduleCalendarViewModel(self._container.scheduling_service())
             return ScheduleCalendarView(vm)
+        elif page_key == "employee_schedules":
+            vm = EmployeeSchedulesViewModel(self._container.scheduling_service())
+            return EmployeeSchedulesView(vm)
         title = _PAGE_TITLES.get(page_key, page_key.replace("_", " ").title())
         return _PlaceholderPage(title)
