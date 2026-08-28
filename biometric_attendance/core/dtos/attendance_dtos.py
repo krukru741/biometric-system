@@ -18,6 +18,7 @@ from biometric_attendance.core.enums.attendance import (
 class AttendanceEventEntity:
     id: int
     employee_id: int
+    employee_id_str: str
     employee_name: str
     device_id: Optional[str]
     event_type: AttendanceEventType
@@ -31,6 +32,7 @@ class AttendanceEventEntity:
 class AttendanceRecordEntity:
     id: int
     employee_id: int
+    employee_id_str: str
     employee_name: str
     schedule_id: Optional[int]
     date: dt.date
@@ -57,6 +59,7 @@ class AttendanceCorrectionEntity:
     id: int
     attendance_record_id: int
     employee_id: int
+    employee_id_str: str
     employee_name: str
     correction_type: CorrectionType
     original_value: str

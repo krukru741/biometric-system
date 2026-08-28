@@ -105,9 +105,9 @@ class AttendanceRecordsView(QWidget):
 
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(11)
+        self.table.setColumnCount(12)
         self.table.setHorizontalHeaderLabels([
-            "Date", "Employee", "Time In", "Break Out", "Break In", "Time Out",
+            "Date", "Emp ID", "Employee", "Time In", "Break Out", "Break In", "Time Out",
             "Worked", "Late", "Undertime", "Overtime", "Status"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -153,35 +153,51 @@ class AttendanceRecordsView(QWidget):
                 return v.strftime("%H:%M:%S") if v else "-"
 
             self.table.setItem(row, 0, QTableWidgetItem(str(rec.date)))
-            self.table.setItem(row, 1, QTableWidgetItem(rec.employee_name))
-            self.table.setItem(row, 2, QTableWidgetItem(_fmt_dt(rec.time_in)))
-            self.table.setItem(row, 3, QTableWidgetItem(_fmt_dt(rec.break_out)))
-            self.table.setItem(row, 4, QTableWidgetItem(_fmt_dt(rec.break_in)))
-            self.table.setItem(row, 5, QTableWidgetItem(_fmt_dt(rec.time_out)))
-            self.table.setItem(row, 6, QTableWidgetItem(f"{rec.worked_minutes} min"))
-            self.table.setItem(row, 7, QTableWidgetItem(f"{rec.late_minutes} min"))
-            self.table.setItem(row, 8, QTableWidgetItem(f"{rec.undertime_minutes} min"))
-            self.table.setItem(row, 9, QTableWidgetItem(f"{rec.overtime_minutes} min"))
+            self.table.setItem(row, 1, QTableWidgetItem(rec.employee_id_str))
+            self.table.setItem(row, 2, QTableWidgetItem(rec.employee_name))
+            self.table.setItem(row, 3, QTableWidgetItem(_fmt_dt(rec.time_in)))
+            self.table.setItem(row, 4, QTableWidgetItem(_fmt_dt(rec.break_out)))
+            self.table.setItem(row, 5, QTableWidgetItem(_fmt_dt(rec.break_in)))
+            self.table.setItem(row, 6, QTableWidgetItem(_fmt_dt(rec.time_out)))
+            self.table.setItem(row, 7, QTableWidgetItem(f"{rec.worked_minutes} min"))
+            self.table.setItem(row, 8, QTableWidgetItem(f"{rec.late_minutes} min"))
+            self.table.setItem(row, 9, QTableWidgetItem(f"{rec.undertime_minutes} min"))
+            self.table.setItem(row, 10, QTableWidgetItem(f"{rec.overtime_minutes} min"))
 
             status_item = QTableWidgetItem(rec.status.value)
             color = _STATUS_COLORS.get(rec.status, "#6C757D")
             status_item.setForeground(Qt.GlobalColor.white)
             from PySide6.QtGui import QColor, QBrush
             status_item.setBackground(QBrush(QColor(color)))
-            self.table.setItem(row, 10, status_item)
+            self.table.setItem(row, 11, status_item)
 
     def _on_generate_absent(self):
-        sd = self.start_date.date()
-        target = dt.date(sd.year(), sd.month(), sd.day())
-        reply = QMessageBox.question(
-            self,
-            "Generate Absent Records",
-            f"Generate ABSENT records for all active employees with no attendance on {target}?\n\n"
-            "Employees with an existing record (any status) on that date will be skipped.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
-            QMessageBox.StandardButton.Cancel,
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Generate Absent Records")
+        layout = QVBoxLayout(dialog)
+        
+        info = QLabel(
+            "Generate ABSENT records for all active employees with no attendance on a specific date.\n\n"
+            "Employees with an existing record (any status) on that date will be skipped."
         )
-        if reply == QMessageBox.StandardButton.Yes:
+        info.setWordWrap(True)
+        layout.addWidget(info)
+        
+        form = QFormLayout()
+        date_edit = QDateEdit()
+        date_edit.setCalendarPopup(True)
+        date_edit.setDate(QDate.currentDate())
+        form.addRow("Target Date:", date_edit)
+        layout.addLayout(form)
+        
+        bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        bb.accepted.connect(dialog.accept)
+        bb.rejected.connect(dialog.reject)
+        layout.addWidget(bb)
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            sd = date_edit.date()
+            target = dt.date(sd.year(), sd.month(), sd.day())
             self.vm.generate_absent_records(target)
 
     def _on_absent_generated(self, count: int):

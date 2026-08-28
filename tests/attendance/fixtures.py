@@ -129,12 +129,14 @@ class MockAttendanceEvent:
     biometric_verified: bool = True
     source: AttendanceSource = AttendanceSource.MOCK
     id: int = 1
+    employee_id_str: str = "EMP-001"
     employee_name: str = "Test Employee"
 
     def to_entity(self) -> AttendanceEventEntity:
         return AttendanceEventEntity(
             id=self.id,
             employee_id=self.employee_id,
+            employee_id_str=self.employee_id_str,
             employee_name=self.employee_name,
             device_id=self.device_id,
             event_type=self.event_type,

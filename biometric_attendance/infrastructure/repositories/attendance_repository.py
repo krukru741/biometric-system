@@ -33,6 +33,7 @@ class AttendanceEventRepository:
         return AttendanceEventEntity(
             id=m.id,
             employee_id=m.employee_id,
+            employee_id_str=emp.employee_id if emp else "",
             employee_name=f"{emp.first_name} {emp.last_name}" if emp else "",
             device_id=m.device_id,
             event_type=m.event_type,
@@ -113,6 +114,7 @@ class AttendanceRecordRepository:
         return AttendanceRecordEntity(
             id=m.id,
             employee_id=m.employee_id,
+            employee_id_str=emp.employee_id if emp else "",
             employee_name=f"{emp.first_name} {emp.last_name}" if emp else "",
             schedule_id=m.schedule_id,
             date=m.date,
@@ -265,6 +267,7 @@ class AttendanceCorrectionRepository:
             id=m.id,
             attendance_record_id=m.attendance_record_id,
             employee_id=m.employee_id,
+            employee_id_str=emp.employee_id if emp else "",
             employee_name=f"{emp.first_name} {emp.last_name}" if emp else "",
             correction_type=m.correction_type,
             original_value=m.original_value,

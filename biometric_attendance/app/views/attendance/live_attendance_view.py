@@ -140,9 +140,9 @@ class LiveAttendanceView(QWidget):
         layout.addWidget(log_label)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
+        self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(
-            ["Employee", "Event Type", "Timestamp", "Source", "Verified"]
+            ["Emp ID", "Employee", "Event Type", "Timestamp", "Source", "Verified"]
         )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -202,11 +202,12 @@ class LiveAttendanceView(QWidget):
         for ev in reversed(events):  # Most recent first
             row = self.table.rowCount()
             self.table.insertRow(row)
-            self.table.setItem(row, 0, QTableWidgetItem(ev.employee_name))
-            self.table.setItem(row, 1, QTableWidgetItem(ev.event_type.value))
-            self.table.setItem(row, 2, QTableWidgetItem(ev.timestamp.strftime("%Y-%m-%d %H:%M:%S")))
-            self.table.setItem(row, 3, QTableWidgetItem(ev.source.value))
-            self.table.setItem(row, 4, QTableWidgetItem("Yes" if ev.biometric_verified else "No"))
+            self.table.setItem(row, 0, QTableWidgetItem(ev.employee_id_str))
+            self.table.setItem(row, 1, QTableWidgetItem(ev.employee_name))
+            self.table.setItem(row, 2, QTableWidgetItem(ev.event_type.value))
+            self.table.setItem(row, 3, QTableWidgetItem(ev.timestamp.strftime("%Y-%m-%d %H:%M:%S")))
+            self.table.setItem(row, 4, QTableWidgetItem(ev.source.value))
+            self.table.setItem(row, 5, QTableWidgetItem("Yes" if ev.biometric_verified else "No"))
 
     def _on_error(self, message: str):
         QMessageBox.critical(self, "Error", message)

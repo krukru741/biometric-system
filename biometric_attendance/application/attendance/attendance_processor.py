@@ -86,7 +86,7 @@ class AttendanceProcessor(IAttendanceProcessor):
                 if existing_record is None:
                     # Even if no record yet, return a meaningful response
                     existing_record = AttendanceRecordEntity(
-                        id=0, employee_id=employee_id, employee_name=event.employee_name,
+                        id=0, employee_id=employee_id, employee_id_str=event.employee_id_str, employee_name=event.employee_name,
                         schedule_id=None, date=event_date,
                         time_in=None, break_out=None, break_in=None, time_out=None,
                         worked_minutes=0, late_minutes=0, undertime_minutes=0, overtime_minutes=0,
