@@ -301,20 +301,30 @@ class EmployeesView(QWidget):
         filter_layout = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search Employees...")
-        self.search_input.setMaximumWidth(300)
+        self.search_input.setMaximumWidth(200)
 
         self.status_filter = QComboBox()
         self.status_filter.addItem("Active", EmploymentStatus.ACTIVE)
         self.status_filter.addItem("Inactive", EmploymentStatus.INACTIVE)
         self.status_filter.addItem("Archived", EmploymentStatus.ARCHIVED)
         self.status_filter.addItem("All", _ALL_STATUSES)
-        self.status_filter.setCurrentIndex(0)  # Default: Active only
+        self.status_filter.setCurrentIndex(0)
 
-        status_lbl = QLabel("Status:")
-        status_lbl.setObjectName("FormLabel")
+        self.dept_filter = QComboBox()
+        self.dept_filter.addItem("All Departments", -1)
+        self.dept_filter.setMinimumWidth(150)
+
+        self.pos_filter = QComboBox()
+        self.pos_filter.addItem("All Positions", -1)
+        self.pos_filter.setMinimumWidth(150)
+
         filter_layout.addWidget(self.search_input)
-        filter_layout.addWidget(status_lbl)
+        filter_layout.addWidget(QLabel("Status:"))
         filter_layout.addWidget(self.status_filter)
+        filter_layout.addWidget(QLabel("Dept:"))
+        filter_layout.addWidget(self.dept_filter)
+        filter_layout.addWidget(QLabel("Pos:"))
+        filter_layout.addWidget(self.pos_filter)
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
 
@@ -340,9 +350,13 @@ class EmployeesView(QWidget):
     def _connect_signals(self):
         self.add_btn.clicked.connect(self._on_add_clicked)
         self.vm.employees_loaded.connect(self._on_employees_loaded)
+        self.vm.departments_loaded.connect(self._on_departments_loaded)
+        self.vm.positions_loaded.connect(self._on_positions_loaded)
         self.vm.error_occurred.connect(self._on_error)
         self.search_input.textChanged.connect(self._apply_filters)
         self.status_filter.currentIndexChanged.connect(self._apply_filters)
+        self.dept_filter.currentIndexChanged.connect(self._apply_filters)
+        self.pos_filter.currentIndexChanged.connect(self._apply_filters)
 
     def _on_back_to_list(self):
         self.stack.setCurrentIndex(0)
@@ -386,15 +400,48 @@ class EmployeesView(QWidget):
         self._all_employees = employees
         self._apply_filters()
 
+    def _on_departments_loaded(self, departments):
+        current = self.dept_filter.currentData()
+        self.dept_filter.blockSignals(True)
+        self.dept_filter.clear()
+        self.dept_filter.addItem("All Departments", -1)
+        for d in departments:
+            self.dept_filter.addItem(d.name, d.id)
+        
+        for i in range(self.dept_filter.count()):
+            if self.dept_filter.itemData(i) == current:
+                self.dept_filter.setCurrentIndex(i)
+                break
+        self.dept_filter.blockSignals(False)
+
+    def _on_positions_loaded(self, positions):
+        current = self.pos_filter.currentData()
+        self.pos_filter.blockSignals(True)
+        self.pos_filter.clear()
+        self.pos_filter.addItem("All Positions", -1)
+        for p in positions:
+            self.pos_filter.addItem(p.name, p.id)
+        
+        for i in range(self.pos_filter.count()):
+            if self.pos_filter.itemData(i) == current:
+                self.pos_filter.setCurrentIndex(i)
+                break
+        self.pos_filter.blockSignals(False)
+
     def _apply_filters(self):
-        """Filter by status dropdown then by search text — search operates within current status filter."""
         status_value = self.status_filter.currentData()
+        dept_value = self.dept_filter.currentData()
+        pos_value = self.pos_filter.currentData()
         search_text = self.search_input.text().strip().lower()
 
         filtered = self._all_employees
 
         if status_value is not _ALL_STATUSES:
             filtered = [e for e in filtered if e.status == status_value]
+        if dept_value != -1 and dept_value is not None:
+            filtered = [e for e in filtered if e.department_id == dept_value]
+        if pos_value != -1 and pos_value is not None:
+            filtered = [e for e in filtered if e.position_id == pos_value]
 
         if search_text:
             filtered = [
