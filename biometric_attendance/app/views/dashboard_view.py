@@ -48,7 +48,7 @@ class _StatCard(QFrame):
         self.setStyleSheet(
             f"#Card {{ border-top: 4px solid {accent}; "
             f"background-color: {theme.SURFACE}; "
-            f"border-radius: {theme.CARD_BORDER_RADIUS}px; }}"
+            f"border-radius: {theme.RADIUS_MD}px; }}"
         )
 
 
@@ -124,7 +124,7 @@ class DashboardView(QScrollArea):
             ("Absent", "—", theme.DANGER),
             ("Late", "—", theme.WARNING),
             ("On Leave", "—", theme.INFO),
-            ("Overtime", "—", theme.MUTED),
+            ("Overtime", "—", theme.TEXT_MUTED),
         ]
 
         for i, (title, value, accent) in enumerate(cards):
