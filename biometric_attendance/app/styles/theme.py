@@ -1,44 +1,118 @@
-"""Application theme — color palette and QSS stylesheets.
+"""Application theme — color palette, design tokens, and QSS stylesheets.
 
-Colors from 01-UI-UX-STRUCTURE.md §4.
 All style constants live here so changing the look means editing one file.
 """
 from __future__ import annotations
 
+import pathlib
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont, QFontDatabase
+from PySide6.QtWidgets import QApplication, QGraphicsDropShadowEffect, QWidget
+
 # ── Color palette ─────────────────────────────────────────────────────────────
-PRIMARY = "#6B352A"          # Clay brown — sidebar background, primary actions
-PRIMARY_DARK = "#4E2620"     # Darker clay for hover/pressed states
-PRIMARY_LIGHT = "#8C4A3D"    # Lighter clay for highlights
-ACCENT = "#FFF1A6"           # Soft butter — active nav item highlight, badges
-BACKGROUND = "#F8F7F4"       # Off-white page background
-SURFACE = "#FFFFFF"          # Card / panel surface
-TEXT = "#292522"             # Primary text
-TEXT_ON_PRIMARY = "#FFFFFF"  # Text on clay-brown surfaces
-MUTED = "#77716C"            # Secondary / placeholder text
-BORDER = "#E2DDD8"           # Subtle border
-SUCCESS = "#3F7D58"          # Green for present/active
-WARNING = "#C58A24"          # Amber for late/pending
-DANGER = "#B94A48"           # Red for absent/error
-INFO = "#3A6EA8"             # Blue for informational
+
+# Brand
+PRIMARY       = "#6B352A"   # Clay brown
+PRIMARY_DARK  = "#4E2620"   # Hover/pressed
+PRIMARY_LIGHT = "#8C4A3D"   # Highlights
+ACCENT        = "#FFF1A6"   # Soft butter
+
+# Semantic surface hierarchy
+BACKGROUND    = "#F5F3EF"   # Off-white page background
+SURFACE       = "#FFFFFF"   # Card / panel surface
+SURFACE_ALT   = "#FAF9F7"   # Nested surfaces, table alternate row
+SURFACE_SIDEBAR = "#5C2D23" # Sidebar (slightly darker than PRIMARY)
+
+# Text
+TEXT          = "#1E1916"   # Primary text
+TEXT_SECONDARY= "#6B645F"   # Subtitles, form labels
+TEXT_MUTED    = "#9B958F"   # Placeholders, captions, disabled text
+TEXT_ON_PRIMARY="#FFFFFF"
+
+# Borders
+BORDER        = "#E8E4DF"   # Default border
+BORDER_FOCUS  = "#6B352A"   # Focus ring
+BORDER_STRONG = "#CCC8C2"   # Dividers, table header bottom
+
+# Status Semantic Colors
+SUCCESS = "#3F7D58"
+SUCCESS_BG = "#EBF5EF"
+WARNING = "#C58A24"
+WARNING_BG = "#FEF6E4"
+DANGER  = "#B94A48"
+DANGER_BG  = "#FCEAEA"
+INFO    = "#3A6EA8"
+INFO_BG    = "#EAF0F9"
 
 
 # ── Typography ────────────────────────────────────────────────────────────────
-FONT_FAMILY = "Segoe UI, Inter, Arial, sans-serif"
-FONT_SIZE_BASE = 13
-FONT_SIZE_SMALL = 11
-FONT_SIZE_LARGE = 15
-FONT_SIZE_TITLE = 22
-FONT_SIZE_HEADING = 18
+FONT_FAMILY = "Inter, Segoe UI, Arial, sans-serif"
+
+# Type Scale (Sizes in px)
+TS_DISPLAY          = 28
+TS_PAGE_TITLE       = 22
+TS_SECTION_HEADING  = 16
+TS_TABLE_HEADER     = 11
+TS_BODY             = 13
+TS_BODY_MEDIUM      = 13
+TS_CAPTION          = 11
+TS_LABEL            = 12
+TS_STAT_VALUE       = 32
+
+# ── Sizing & Spacing Scale (8px-based) ──────────────────────────────────────
+SIDEBAR_WIDTH = 240
+TOPBAR_HEIGHT = 56
+
+# Spacing Tokens
+SPACE_XS  =  4   # Tight internal padding (icon gaps)
+SPACE_SM  =  8   # Small gap (label-to-field, inline items)
+SPACE_MD  = 12   # Between related items in a form row
+SPACE_LG  = 16   # Content-level spacing (between fields)
+SPACE_XL  = 24   # Section gap (between card sections)
+SPACE_2XL = 32   # Page-level margins, card padding
+SPACE_3XL = 48   # Large decorative padding
+
+# Border Radii
+RADIUS_SM   =  6   # Inputs, buttons, tags/badges
+RADIUS_MD   = 10   # Cards, panels, dialogs
+RADIUS_LG   = 14   # Large modal surfaces
+RADIUS_PILL = 20   # Progress indicators, status chips
 
 
-# ── Sizing ────────────────────────────────────────────────────────────────────
-SIDEBAR_WIDTH = 220
-TOPBAR_HEIGHT = 52
-BORDER_RADIUS = 8
-CARD_BORDER_RADIUS = 10
-BUTTON_BORDER_RADIUS = 6
-INPUT_BORDER_RADIUS = 6
+# ── Elevation & Helpers ─────────────────────────────────────────────────────
 
+def load_fonts() -> None:
+    """Load bundled Inter fonts into the application."""
+    fonts_dir = pathlib.Path(__file__).parent.parent / "resources" / "fonts" / "Inter"
+    if not fonts_dir.exists():
+        return
+    for font_file in fonts_dir.glob("*.ttf"):
+        QFontDatabase.addApplicationFont(str(font_file))
+
+
+def apply_card_shadow(widget: QWidget, level: int = 1) -> None:
+    """Apply standard QGraphicsDropShadowEffect to a widget.
+    
+    level 1: SHADOW_CARD (Subtle card shadow)
+    level 2: SHADOW_MODAL (Stronger modal/dialog shadow)
+    """
+    shadow = QGraphicsDropShadowEffect(widget)
+    shadow.setOffset(0, 4 if level == 1 else 8)
+    shadow.setBlurRadius(18 if level == 1 else 32)
+    # Using a soft black with different alpha
+    alpha = 20 if level == 1 else 45
+    shadow.setColor(Qt.GlobalColor.black)
+    
+    # We must access the underlying QColor to set alpha, but Qt.black works if we construct QColor
+    from PySide6.QtGui import QColor
+    shadow_color = QColor(0, 0, 0, alpha)
+    shadow.setColor(shadow_color)
+    
+    widget.setGraphicsEffect(shadow)
+
+
+# ── Global QSS Stylesheet ─────────────────────────────────────────────────────
 
 def build_global_stylesheet() -> str:
     """Return the application-wide QSS stylesheet string."""
@@ -46,29 +120,16 @@ def build_global_stylesheet() -> str:
 /* ── Global reset ──────────────────────────────────────────────────────────── */
 QWidget {{
     font-family: {FONT_FAMILY};
-    font-size: {FONT_SIZE_BASE}px;
+    font-size: {TS_BODY}px;
     color: {TEXT};
     background-color: transparent;
 }}
 
-QMainWindow {{
+QMainWindow, QDialog, QMessageBox {{
     background-color: {BACKGROUND};
 }}
 
-QDialog {{
-    background-color: {BACKGROUND};
-}}
-
-QMessageBox {{
-    background-color: {BACKGROUND};
-}}
-
-QMessageBox QLabel {{
-    color: {TEXT};
-    background-color: transparent;
-}}
-
-QDialog QLabel {{
+QMessageBox QLabel, QDialog QLabel {{
     color: {TEXT};
     background-color: transparent;
 }}
@@ -77,9 +138,10 @@ QMessageBox QPushButton {{
     background-color: {PRIMARY};
     color: {TEXT_ON_PRIMARY};
     border: none;
-    border-radius: {BUTTON_BORDER_RADIUS}px;
-    padding: 6px 18px;
+    border-radius: {RADIUS_SM}px;
+    padding: {SPACE_SM}px {SPACE_LG}px;
     min-width: 64px;
+    font-weight: 500;
 }}
 
 QMessageBox QPushButton:hover {{
@@ -88,31 +150,32 @@ QMessageBox QPushButton:hover {{
 
 /* ── Sidebar ────────────────────────────────────────────────────────────────── */
 #Sidebar {{
-    background-color: {PRIMARY};
+    background-color: {SURFACE_SIDEBAR};
     border-right: none;
 }}
 
 #SidebarAppTitle {{
     color: {TEXT_ON_PRIMARY};
-    font-size: {FONT_SIZE_LARGE}px;
+    font-size: {TS_SECTION_HEADING}px;
     font-weight: 700;
-    padding: 8px 0px 4px 0px;
+    padding: {SPACE_SM}px 0px {SPACE_XS}px 0px;
 }}
 
 #SidebarAppSubtitle {{
     color: rgba(255,255,255,0.65);
-    font-size: {FONT_SIZE_SMALL}px;
-    padding-bottom: 8px;
+    font-size: {TS_CAPTION}px;
+    padding-bottom: {SPACE_SM}px;
 }}
 
 #SidebarNavButton {{
     color: rgba(255,255,255,0.85);
     background-color: transparent;
     border: none;
-    border-radius: {BORDER_RADIUS}px;
+    border-radius: {RADIUS_SM}px;
     text-align: left;
-    padding: 9px 14px;
-    font-size: {FONT_SIZE_BASE}px;
+    padding: {SPACE_SM}px {SPACE_MD}px;
+    font-size: {TS_BODY_MEDIUM}px;
+    font-weight: 500;
 }}
 
 #SidebarNavButton:hover {{
@@ -131,10 +194,11 @@ QMessageBox QPushButton:hover {{
     color: rgba(255,255,255,0.7);
     background-color: transparent;
     border: none;
-    border-radius: {BORDER_RADIUS}px;
+    border-radius: {RADIUS_SM}px;
     text-align: left;
-    padding: 7px 14px 7px 10px;
-    font-size: {FONT_SIZE_SMALL}px;
+    padding: 7px {SPACE_MD}px 7px {SPACE_MD}px;
+    font-size: {TS_BODY_MEDIUM}px;
+    font-weight: 500;
 }}
 
 #SidebarSubNavButton:hover {{
@@ -146,8 +210,6 @@ QMessageBox QPushButton:hover {{
     background-color: rgba(255,241,166,0.18);
     color: {ACCENT};
     font-weight: 600;
-    border-left: 2px solid {ACCENT};
-    padding-left: 8px;
 }}
 
 #SidebarIndentGuide {{
@@ -157,19 +219,15 @@ QMessageBox QPushButton:hover {{
 }}
 
 QPushButton#SidebarSectionHeader {{
-    color: rgba(255,255,255,0.6);
+    color: rgba(255,255,255,0.5);
     background-color: transparent;
     border: none;
-    border-radius: 6px;
     text-align: left;
-    padding: 10px 14px 2px 14px;
-    font-size: 11px;
+    padding: {SPACE_LG}px {SPACE_MD}px {SPACE_XS}px {SPACE_MD}px;
+    font-size: {TS_TABLE_HEADER}px;
     font-weight: 700;
-    letter-spacing: 1px;
-}}
-
-QPushButton#SidebarSectionHeader:hover {{
-    color: #FFFFFF;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
 }}
 
 /* ── Top Bar ────────────────────────────────────────────────────────────────── */
@@ -179,25 +237,25 @@ QPushButton#SidebarSectionHeader:hover {{
 }}
 
 #TopBarTitle {{
-    font-size: {FONT_SIZE_HEADING}px;
+    font-size: {TS_PAGE_TITLE}px;
     font-weight: 700;
     color: {TEXT};
 }}
 
 #TopBarSubtitle {{
-    font-size: {FONT_SIZE_SMALL}px;
-    color: {MUTED};
+    font-size: {TS_BODY}px;
+    color: {TEXT_SECONDARY};
 }}
 
 #TopBarUserLabel {{
-    font-size: {FONT_SIZE_BASE}px;
+    font-size: {TS_BODY_MEDIUM}px;
     color: {TEXT};
-    font-weight: 500;
+    font-weight: 600;
 }}
 
 #TopBarTimeLabel {{
-    font-size: {FONT_SIZE_SMALL}px;
-    color: {MUTED};
+    font-size: {TS_CAPTION}px;
+    color: {TEXT_MUTED};
 }}
 
 /* ── Buttons ────────────────────────────────────────────────────────────────── */
@@ -205,9 +263,9 @@ QPushButton#PrimaryButton {{
     background-color: {PRIMARY};
     color: {TEXT_ON_PRIMARY};
     border: none;
-    border-radius: {BUTTON_BORDER_RADIUS}px;
-    padding: 9px 20px;
-    font-size: {FONT_SIZE_BASE}px;
+    border-radius: {RADIUS_SM}px;
+    padding: 9px {SPACE_XL}px;
+    font-size: {TS_BODY_MEDIUM}px;
     font-weight: 600;
 }}
 
@@ -220,94 +278,226 @@ QPushButton#PrimaryButton:pressed {{
 }}
 
 QPushButton#PrimaryButton:disabled {{
-    background-color: {MUTED};
-    color: rgba(255,255,255,0.5);
+    background-color: {BORDER};
+    color: {TEXT_MUTED};
 }}
 
 QPushButton#SecondaryButton {{
-    background-color: transparent;
+    background-color: {SURFACE};
     color: {PRIMARY};
     border: 1.5px solid {PRIMARY};
-    border-radius: {BUTTON_BORDER_RADIUS}px;
-    padding: 5px 12px;
-    font-size: {FONT_SIZE_BASE}px;
-    font-weight: 500;
-    min-width: 60px;
+    border-radius: {RADIUS_SM}px;
+    padding: 7px {SPACE_LG}px;
+    font-size: {TS_BODY_MEDIUM}px;
+    font-weight: 600;
 }}
 
 QPushButton#SecondaryButton:hover {{
-    background-color: rgba(107,53,42,0.07);
+    background-color: rgba(107,53,42,0.04);
 }}
 
 QPushButton#GhostButton {{
     background-color: transparent;
-    color: {MUTED};
+    color: {TEXT_SECONDARY};
     border: none;
-    padding: 6px 12px;
-    font-size: {FONT_SIZE_SMALL}px;
+    padding: 6px {SPACE_MD}px;
+    font-size: {TS_BODY_MEDIUM}px;
+    font-weight: 500;
+    border-radius: {RADIUS_SM}px;
 }}
 
 QPushButton#GhostButton:hover {{
     color: {TEXT};
-    text-decoration: underline;
+    background-color: {SURFACE_ALT};
+}}
+
+QPushButton#IconButton {{
+    background-color: transparent;
+    border: none;
+    border-radius: {RADIUS_SM}px;
+    padding: {SPACE_XS}px;
+}}
+
+QPushButton#IconButton:hover {{
+    background-color: {SURFACE_ALT};
 }}
 
 /* ── Inputs ─────────────────────────────────────────────────────────────────── */
-QLineEdit {{
+QLineEdit, QComboBox, QDateEdit, QTimeEdit, QSpinBox {{
     background-color: {SURFACE};
-    border: 1.5px solid {BORDER};
-    border-radius: {INPUT_BORDER_RADIUS}px;
-    padding: 8px 12px;
-    font-size: {FONT_SIZE_BASE}px;
+    border: 1px solid {BORDER};
+    border-radius: {RADIUS_SM}px;
+    padding: 8px {SPACE_MD}px;
+    font-size: {TS_BODY}px;
     color: {TEXT};
     selection-background-color: {PRIMARY_LIGHT};
 }}
 
-QLineEdit:focus {{
-    border-color: {PRIMARY};
+QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTimeEdit:focus, QSpinBox:focus {{
+    border-color: {BORDER_FOCUS};
     outline: none;
 }}
 
-QLineEdit:disabled {{
+QLineEdit:disabled, QComboBox:disabled, QDateEdit:disabled, QTimeEdit:disabled, QSpinBox:disabled {{
     background-color: {BACKGROUND};
-    color: {MUTED};
+    color: {TEXT_MUTED};
 }}
 
-QLineEdit[error="true"] {{
+QLineEdit[error="true"], QComboBox[error="true"] {{
     border-color: {DANGER};
+}}
+
+/* Checkbox */
+QCheckBox {{
+    spacing: {SPACE_SM}px;
+    font-size: {TS_BODY}px;
+}}
+QCheckBox::indicator {{
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1.5px solid {BORDER};
+    background-color: {SURFACE};
+}}
+QCheckBox::indicator:checked {{
+    background-color: {PRIMARY};
+    border-color: {PRIMARY};
+    /* Could add an SVG checkmark here via image: url() if needed */
+}}
+QCheckBox::indicator:disabled {{
+    background-color: {BACKGROUND};
+    border-color: {BORDER};
 }}
 
 /* ── Labels ─────────────────────────────────────────────────────────────────── */
 QLabel#ErrorLabel {{
     color: {DANGER};
-    font-size: {FONT_SIZE_SMALL}px;
+    font-size: {TS_CAPTION}px;
 }}
 
 QLabel#FormLabel {{
-    color: {TEXT};
-    font-size: {FONT_SIZE_BASE}px;
+    color: {TEXT_SECONDARY};
+    font-size: {TS_LABEL}px;
     font-weight: 500;
 }}
 
 QLabel#HeadingLabel {{
     color: {TEXT};
-    font-size: {FONT_SIZE_TITLE}px;
+    font-size: {TS_DISPLAY}px;
     font-weight: 700;
 }}
 
-QLabel#SubheadingLabel {{
-    color: {MUTED};
-    font-size: {FONT_SIZE_BASE}px;
+QLabel#PageTitle {{
+    color: {TEXT};
+    font-size: {TS_PAGE_TITLE}px;
+    font-weight: 700;
 }}
 
-/* ── Cards ──────────────────────────────────────────────────────────────────── */
+QLabel#SectionHeading {{
+    color: {TEXT};
+    font-size: {TS_SECTION_HEADING}px;
+    font-weight: 600;
+}}
+
+QLabel#SubheadingLabel {{
+    color: {TEXT_SECONDARY};
+    font-size: {TS_BODY}px;
+}}
+
+QLabel#StatValue {{
+    color: {TEXT};
+    font-size: {TS_STAT_VALUE}px;
+    font-weight: 700;
+}}
+
+QLabel#StatusChip {{
+    padding: {SPACE_XS}px {SPACE_SM}px;
+    border-radius: {RADIUS_SM}px;
+    font-size: {TS_CAPTION}px;
+    font-weight: 600;
+}}
+
+/* ── Cards & Surfaces ───────────────────────────────────────────────────────── */
 QFrame#Card {{
     background-color: {SURFACE};
-    border-radius: {CARD_BORDER_RADIUS}px;
+    border-radius: {RADIUS_MD}px;
     border: 1px solid {BORDER};
 }}
 
+QFrame#Divider {{
+    max-height: 1px;
+    background-color: {BORDER};
+}}
+
+/* ── Tables ─────────────────────────────────────────────────────────────────── */
+QTableWidget, QTableView {{
+    background-color: {SURFACE};
+    alternate-background-color: {SURFACE_ALT};
+    border: 1px solid {BORDER};
+    border-radius: {RADIUS_MD}px;
+    gridline-color: transparent;
+    selection-background-color: rgba(107,53,42,0.08); /* PRIMARY at 8% */
+    selection-color: {TEXT};
+    font-size: {TS_BODY}px;
+}}
+
+QTableWidget::item, QTableView::item {{
+    padding: {SPACE_SM}px;
+    border-bottom: 1px solid {SURFACE_ALT};
+}}
+
+QTableWidget::item:hover, QTableView::item:hover {{
+    background-color: rgba(107,53,42,0.04);
+}}
+
+QHeaderView::section {{
+    background-color: {SURFACE_ALT};
+    color: {TEXT_SECONDARY};
+    font-size: {TS_TABLE_HEADER}px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: {SPACE_MD}px;
+    border: none;
+    border-bottom: 1px solid {BORDER_STRONG};
+}}
+
+/* ── Tabs ───────────────────────────────────────────────────────────────────── */
+QTabWidget::pane {{
+    border: 1px solid {BORDER};
+    border-radius: {RADIUS_MD}px;
+    background: {SURFACE};
+    top: -1px; /* overlap with tab bar */
+}}
+
+QTabBar::tab {{
+    background: {BACKGROUND};
+    border: 1px solid {BORDER};
+    border-bottom-color: {BORDER}; /* same as pane border */
+    border-top-left-radius: {RADIUS_SM}px;
+    border-top-right-radius: {RADIUS_SM}px;
+    min-width: 80px;
+    padding: {SPACE_SM}px {SPACE_LG}px;
+    color: {TEXT_SECONDARY};
+    font-weight: 500;
+}}
+
+QTabBar::tab:selected {{
+    background: {SURFACE};
+    border-bottom-color: {SURFACE}; /* merge with pane */
+    color: {PRIMARY};
+    font-weight: 600;
+}}
+
+QTabBar::tab:hover:!selected {{
+    background: {SURFACE_ALT};
+}}
+
 /* ── Scrollbars ─────────────────────────────────────────────────────────────── */
+QScrollArea {{
+    border: none;
+    background: transparent;
+}}
+
 QScrollBar:vertical {{
     background: transparent;
     width: 8px;
@@ -315,13 +505,13 @@ QScrollBar:vertical {{
 }}
 
 QScrollBar::handle:vertical {{
-    background: {BORDER};
+    background: {BORDER_STRONG};
     border-radius: 4px;
     min-height: 30px;
 }}
 
 QScrollBar::handle:vertical:hover {{
-    background: {MUTED};
+    background: {TEXT_MUTED};
 }}
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{

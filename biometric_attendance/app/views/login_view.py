@@ -74,24 +74,25 @@ class LoginView(QWidget):
         """)
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(48, 0, 48, 0)
+        layout.setContentsMargins(theme.SPACE_3XL, 0, theme.SPACE_3XL, 0)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        icon = QLabel("◈")
+        from biometric_attendance.app.styles.icons import pixmap
+        icon = QLabel()
+        icon.setPixmap(pixmap("badge", color=theme.ACCENT, size=64))
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon.setStyleSheet(f"color: {theme.ACCENT}; font-size: 64px; background: transparent;")
         layout.addWidget(icon)
 
-        layout.addSpacing(24)
+        layout.addSpacing(theme.SPACE_XL)
 
         title = QLabel("Biometric Attendance\nTracking System")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet(
-            f"color: white; font-size: 26px; font-weight: 700; background: transparent;"
+            f"color: {theme.TEXT_ON_PRIMARY}; font-size: {theme.TS_DISPLAY}px; font-weight: 700; background: transparent;"
         )
         layout.addWidget(title)
 
-        layout.addSpacing(16)
+        layout.addSpacing(theme.SPACE_LG)
 
         tagline = QLabel(
             "Secure • Accurate • Efficient\n\n"
@@ -100,7 +101,7 @@ class LoginView(QWidget):
         )
         tagline.setAlignment(Qt.AlignmentFlag.AlignCenter)
         tagline.setStyleSheet(
-            f"color: rgba(255,255,255,0.72); font-size: 13px; background: transparent;"
+            f"color: rgba(255,255,255,0.72); font-size: {theme.TS_BODY}px; background: transparent;"
         )
         layout.addWidget(tagline)
 
@@ -112,16 +113,18 @@ class LoginView(QWidget):
         panel.setStyleSheet(f"#LoginRightPanel {{ background-color: {theme.BACKGROUND}; }}")
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(64, 0, 64, 0)
+        layout.setContentsMargins(theme.SPACE_3XL, 0, theme.SPACE_3XL, 0)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Card
         card = QFrame()
         card.setObjectName("Card")
         card.setFixedWidth(400)
+        theme.apply_card_shadow(card, level=2)
+        
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(36, 36, 36, 36)
-        card_layout.setSpacing(18)
+        card_layout.setContentsMargins(theme.SPACE_2XL, theme.SPACE_2XL, theme.SPACE_2XL, theme.SPACE_2XL)
+        card_layout.setSpacing(theme.SPACE_LG)
 
         # Heading
         heading = QLabel("Sign In")
@@ -132,7 +135,7 @@ class LoginView(QWidget):
         sub.setObjectName("SubheadingLabel")
         card_layout.addWidget(sub)
 
-        card_layout.addSpacing(8)
+        card_layout.addSpacing(theme.SPACE_SM)
 
         # Username
         lbl_user = QLabel("Username")
@@ -158,20 +161,22 @@ class LoginView(QWidget):
         self._password_input.setObjectName("PasswordInput")
         pw_row.addWidget(self._password_input)
 
-        self._show_pw_btn = QPushButton("👁")
-        self._show_pw_btn.setFixedSize(38, 38)
+        from biometric_attendance.app.styles.icons import icon
+        self._show_pw_btn = QPushButton()
+        self._show_pw_btn.setIcon(icon("eye", size=18))
+        self._show_pw_btn.setFixedSize(40, 40)
         self._show_pw_btn.setCheckable(True)
-        self._show_pw_btn.setObjectName("GhostButton")
+        self._show_pw_btn.setObjectName("IconButton")
         self._show_pw_btn.setStyleSheet(
-            f"font-size: 16px; border: 1.5px solid {theme.BORDER}; "
-            f"border-left: none; border-radius: 0px 6px 6px 0px;"
+            f"border: 1px solid {theme.BORDER}; border-left: none; "
+            f"border-top-left-radius: 0; border-bottom-left-radius: 0;"
         )
         self._show_pw_btn.clicked.connect(self._toggle_password_visibility)
         pw_row.addWidget(self._show_pw_btn)
 
         # Fix the line-edit right border radius when show-pw is present
         self._password_input.setStyleSheet(
-            f"border-radius: 6px 0px 0px 6px;"
+            f"border-top-right-radius: 0; border-bottom-right-radius: 0;"
         )
 
         card_layout.addLayout(pw_row)
@@ -216,10 +221,13 @@ class LoginView(QWidget):
         )
 
     def _toggle_password_visibility(self, checked: bool) -> None:
+        from biometric_attendance.app.styles.icons import icon
         if checked:
             self._password_input.setEchoMode(QLineEdit.EchoMode.Normal)
+            self._show_pw_btn.setIcon(icon("eye-off", size=18))
         else:
             self._password_input.setEchoMode(QLineEdit.EchoMode.Password)
+            self._show_pw_btn.setIcon(icon("eye", size=18))
 
     def _on_login_success(self, user: SessionUser) -> None:
         self._password_input.clear()

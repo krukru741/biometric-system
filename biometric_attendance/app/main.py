@@ -24,7 +24,6 @@ from biometric_attendance.infrastructure.data.database import engine, get_sessio
 from biometric_attendance.infrastructure.data.models import Base, seed_roles_and_permissions
 
 from biometric_attendance.app.container import AppContainer
-from biometric_attendance.app.styles.theme import build_global_stylesheet
 from biometric_attendance.app.viewmodels.login_vm import LoginViewModel
 from biometric_attendance.app.viewmodels.setup_wizard_vm import SetupWizardViewModel
 from biometric_attendance.app.views.login_view import LoginView
@@ -73,11 +72,16 @@ def main() -> int:
     app.setApplicationDisplayName("Biometric Attendance Tracking System")
     app.setOrganizationName("BATS")
 
+    from biometric_attendance.app.styles.theme import build_global_stylesheet, load_fonts, FONT_FAMILY, TS_BODY
+    
+    # Load custom fonts
+    load_fonts()
+
     # Apply global stylesheet
     app.setStyleSheet(build_global_stylesheet())
 
     # Set default font
-    font = QFont("Segoe UI", 13)
+    font = QFont(FONT_FAMILY.split(",")[0], TS_BODY)
     app.setFont(font)
 
     # ── DI container ──────────────────────────────────────────────────────────
