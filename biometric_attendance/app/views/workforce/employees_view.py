@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QCheckBox,
     QSpinBox,
+    QStackedWidget,
 )
 
 from biometric_attendance.app.viewmodels.workforce_vms import EmployeesViewModel
