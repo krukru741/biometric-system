@@ -1,6 +1,7 @@
 """Repositories for the Biometrics domain."""
 from __future__ import annotations
 
+from biometric_attendance.infrastructure.data.database import auto_session
 import datetime as dt
 from typing import List, Optional
 
@@ -19,7 +20,7 @@ from biometric_attendance.infrastructure.data.models import (
 
 
 class EmployeeBiometricRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session | None = None) -> None:
         self._session = session
 
     def _to_entity(self, m: EmployeeBiometricModel) -> EmployeeBiometricEntity:
@@ -36,19 +37,21 @@ class EmployeeBiometricRepository:
         )
 
     def save(self, **kwargs) -> EmployeeBiometricEntity:
-        m = EmployeeBiometricModel(**kwargs)
-        self._session.add(m)
-        self._session.commit()
-        self._session.refresh(m)
-        return self._to_entity(m)
+        with auto_session(self._session) as session:
+            m = EmployeeBiometricModel(**kwargs)
+            session.add(m)
+            session.flush()
+            session.refresh(m)
+            return self._to_entity(m)
 
     def get_by_employee_id(self, employee_id: int) -> List[EmployeeBiometricEntity]:
-        models = self._session.query(EmployeeBiometricModel).filter_by(employee_id=employee_id).all()
-        return [self._to_entity(m) for m in models]
+        with auto_session(self._session) as session:
+            models = session.query(EmployeeBiometricModel).filter_by(employee_id=employee_id).all()
+            return [self._to_entity(m) for m in models]
 
 
 class BiometricDeviceRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session | None = None) -> None:
         self._session = session
 
     def _to_entity(self, m: BiometricDeviceModel) -> BiometricDeviceEntity:
@@ -68,33 +71,37 @@ class BiometricDeviceRepository:
         )
 
     def get_all(self) -> List[BiometricDeviceEntity]:
-        models = self._session.query(BiometricDeviceModel).all()
-        return [self._to_entity(m) for m in models]
+        with auto_session(self._session) as session:
+            models = session.query(BiometricDeviceModel).all()
+            return [self._to_entity(m) for m in models]
 
     def get_by_id(self, device_id: int) -> Optional[BiometricDeviceEntity]:
-        m = self._session.query(BiometricDeviceModel).filter_by(id=device_id).first()
-        return self._to_entity(m) if m else None
+        with auto_session(self._session) as session:
+            m = session.query(BiometricDeviceModel).filter_by(id=device_id).first()
+            return self._to_entity(m) if m else None
 
     def save(self, **kwargs) -> BiometricDeviceEntity:
-        m = BiometricDeviceModel(**kwargs)
-        self._session.add(m)
-        self._session.commit()
-        self._session.refresh(m)
-        return self._to_entity(m)
+        with auto_session(self._session) as session:
+            m = BiometricDeviceModel(**kwargs)
+            session.add(m)
+            session.flush()
+            session.refresh(m)
+            return self._to_entity(m)
     
     def update(self, device_id: int, **kwargs) -> BiometricDeviceEntity:
-        m = self._session.query(BiometricDeviceModel).filter_by(id=device_id).first()
-        if not m:
-            raise ValueError(f"Device {device_id} not found")
-        for k, v in kwargs.items():
-            setattr(m, k, v)
-        self._session.commit()
-        self._session.refresh(m)
-        return self._to_entity(m)
+        with auto_session(self._session) as session:
+            m = session.query(BiometricDeviceModel).filter_by(id=device_id).first()
+            if not m:
+                raise ValueError(f"Device {device_id} not found")
+            for k, v in kwargs.items():
+                setattr(m, k, v)
+            session.flush()
+            session.refresh(m)
+            return self._to_entity(m)
 
 
 class BiometricLogRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session | None = None) -> None:
         self._session = session
 
     def _to_entity(self, m: BiometricLogModel) -> BiometricLogEntity:
@@ -110,12 +117,14 @@ class BiometricLogRepository:
         )
 
     def save(self, **kwargs) -> BiometricLogEntity:
-        m = BiometricLogModel(**kwargs)
-        self._session.add(m)
-        self._session.commit()
-        self._session.refresh(m)
-        return self._to_entity(m)
+        with auto_session(self._session) as session:
+            m = BiometricLogModel(**kwargs)
+            session.add(m)
+            session.flush()
+            session.refresh(m)
+            return self._to_entity(m)
 
     def get_recent(self, limit: int = 100) -> List[BiometricLogEntity]:
-        models = self._session.query(BiometricLogModel).order_by(BiometricLogModel.created_at.desc()).limit(limit).all()
-        return [self._to_entity(m) for m in models]
+        with auto_session(self._session) as session:
+            models = session.query(BiometricLogModel).order_by(BiometricLogModel.created_at.desc()).limit(limit).all()
+            return [self._to_entity(m) for m in models]

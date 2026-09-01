@@ -1,6 +1,7 @@
 """Repositories for the Scheduling domain."""
 from __future__ import annotations
 
+from biometric_attendance.infrastructure.data.database import auto_session
 import datetime as dt
 from typing import List, Optional
 
@@ -21,7 +22,7 @@ from biometric_attendance.infrastructure.data.models import (
 
 
 class ShiftTemplateRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session | None = None) -> None:
         self._session = session
 
     def _to_entity(self, m: ShiftTemplateModel) -> ShiftTemplateEntity:
@@ -41,50 +42,55 @@ class ShiftTemplateRepository:
         )
 
     def get_all(self) -> List[ShiftTemplateEntity]:
-        return [self._to_entity(m) for m in self._session.query(ShiftTemplateModel).all()]
+        with auto_session(self._session) as session:
+            return [self._to_entity(m) for m in session.query(ShiftTemplateModel).all()]
 
     def get_active(self) -> List[ShiftTemplateEntity]:
-        return [
-            self._to_entity(m)
-            for m in self._session.query(ShiftTemplateModel).filter_by(is_active=True).all()
-        ]
+        with auto_session(self._session) as session:
+            return [
+                self._to_entity(m)
+                for m in session.query(ShiftTemplateModel).filter_by(is_active=True).all()
+            ]
 
     def create(self, **kwargs) -> ShiftTemplateEntity:
         # Auto-compute is_overnight
-        start = kwargs.get("start_time")
-        end = kwargs.get("end_time")
-        if start and end:
-            kwargs["is_overnight"] = end < start
-        m = ShiftTemplateModel(**kwargs)
-        self._session.add(m)
-        self._session.commit()
-        self._session.refresh(m)
-        return self._to_entity(m)
+        with auto_session(self._session) as session:
+            start = kwargs.get("start_time")
+            end = kwargs.get("end_time")
+            if start and end:
+                kwargs["is_overnight"] = end < start
+            m = ShiftTemplateModel(**kwargs)
+            session.add(m)
+            session.flush()
+            session.refresh(m)
+            return self._to_entity(m)
 
     def update(self, id: int, **kwargs) -> Optional[ShiftTemplateEntity]:
-        m = self._session.query(ShiftTemplateModel).filter_by(id=id).first()
-        if m is None:
-            return None
-        for k, v in kwargs.items():
-            if hasattr(m, k):
-                setattr(m, k, v)
-        # Recompute overnight
-        m.is_overnight = m.end_time < m.start_time
-        self._session.commit()
-        self._session.refresh(m)
-        return self._to_entity(m)
+        with auto_session(self._session) as session:
+            m = session.query(ShiftTemplateModel).filter_by(id=id).first()
+            if m is None:
+                return None
+            for k, v in kwargs.items():
+                if hasattr(m, k):
+                    setattr(m, k, v)
+            # Recompute overnight
+            m.is_overnight = m.end_time < m.start_time
+            session.flush()
+            session.refresh(m)
+            return self._to_entity(m)
 
     def deactivate(self, id: int) -> bool:
-        m = self._session.query(ShiftTemplateModel).filter_by(id=id).first()
-        if m is None:
-            return False
-        m.is_active = False
-        self._session.commit()
-        return True
+        with auto_session(self._session) as session:
+            m = session.query(ShiftTemplateModel).filter_by(id=id).first()
+            if m is None:
+                return False
+            m.is_active = False
+            session.flush()
+            return True
 
 
 class HolidayRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session | None = None) -> None:
         self._session = session
 
     def _to_entity(self, m: HolidayModel) -> HolidayEntity:
@@ -98,46 +104,51 @@ class HolidayRepository:
         )
 
     def get_all(self) -> List[HolidayEntity]:
-        return [self._to_entity(m) for m in self._session.query(HolidayModel).order_by(HolidayModel.date).all()]
+        with auto_session(self._session) as session:
+            return [self._to_entity(m) for m in session.query(HolidayModel).order_by(HolidayModel.date).all()]
 
     def get_by_year(self, year: int) -> List[HolidayEntity]:
-        return [
-            self._to_entity(m)
-            for m in self._session.query(HolidayModel)
-            .filter(HolidayModel.date >= dt.date(year, 1, 1), HolidayModel.date <= dt.date(year, 12, 31))
-            .order_by(HolidayModel.date)
-            .all()
-        ]
+        with auto_session(self._session) as session:
+            return [
+                self._to_entity(m)
+                for m in session.query(HolidayModel)
+                .filter(HolidayModel.date >= dt.date(year, 1, 1), HolidayModel.date <= dt.date(year, 12, 31))
+                .order_by(HolidayModel.date)
+                .all()
+            ]
 
     def create(self, **kwargs) -> HolidayEntity:
-        m = HolidayModel(**kwargs)
-        self._session.add(m)
-        self._session.commit()
-        self._session.refresh(m)
-        return self._to_entity(m)
+        with auto_session(self._session) as session:
+            m = HolidayModel(**kwargs)
+            session.add(m)
+            session.flush()
+            session.refresh(m)
+            return self._to_entity(m)
 
     def update(self, id: int, **kwargs) -> Optional[HolidayEntity]:
-        m = self._session.query(HolidayModel).filter_by(id=id).first()
-        if m is None:
-            return None
-        for k, v in kwargs.items():
-            if hasattr(m, k):
-                setattr(m, k, v)
-        self._session.commit()
-        self._session.refresh(m)
-        return self._to_entity(m)
+        with auto_session(self._session) as session:
+            m = session.query(HolidayModel).filter_by(id=id).first()
+            if m is None:
+                return None
+            for k, v in kwargs.items():
+                if hasattr(m, k):
+                    setattr(m, k, v)
+            session.flush()
+            session.refresh(m)
+            return self._to_entity(m)
 
     def delete(self, id: int) -> bool:
-        m = self._session.query(HolidayModel).filter_by(id=id).first()
-        if m is None:
-            return False
-        self._session.delete(m)
-        self._session.commit()
-        return True
+        with auto_session(self._session) as session:
+            m = session.query(HolidayModel).filter_by(id=id).first()
+            if m is None:
+                return False
+            session.delete(m)
+            session.flush()
+            return True
 
 
 class EmployeeScheduleRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session | None = None) -> None:
         self._session = session
 
     def _to_entity(self, m: EmployeeScheduleModel) -> EmployeeScheduleEntity:
@@ -168,34 +179,36 @@ class EmployeeScheduleRepository:
         )
 
     def get_by_month(self, year: int, month: int) -> List[EmployeeScheduleEntity]:
-        start = dt.date(year, month, 1)
-        if month == 12:
-            end = dt.date(year + 1, 1, 1)
-        else:
-            end = dt.date(year, month + 1, 1)
-        rows = (
-            self._base_query()
-            .filter(EmployeeScheduleModel.date >= start, EmployeeScheduleModel.date < end)
-            .all()
-        )
-        return [self._to_entity(r) for r in rows]
+        with auto_session(self._session) as session:
+            start = dt.date(year, month, 1)
+            if month == 12:
+                end = dt.date(year + 1, 1, 1)
+            else:
+                end = dt.date(year, month + 1, 1)
+            rows = (
+                self._base_query()
+                .filter(EmployeeScheduleModel.date >= start, EmployeeScheduleModel.date < end)
+                .all()
+            )
+            return [self._to_entity(r) for r in rows]
 
     def get_by_employee(self, employee_id: int, year: int, month: int) -> List[EmployeeScheduleEntity]:
-        start = dt.date(year, month, 1)
-        if month == 12:
-            end = dt.date(year + 1, 1, 1)
-        else:
-            end = dt.date(year, month + 1, 1)
-        rows = (
-            self._base_query()
-            .filter(
-                EmployeeScheduleModel.employee_id == employee_id,
-                EmployeeScheduleModel.date >= start,
-                EmployeeScheduleModel.date < end,
+        with auto_session(self._session) as session:
+            start = dt.date(year, month, 1)
+            if month == 12:
+                end = dt.date(year + 1, 1, 1)
+            else:
+                end = dt.date(year, month + 1, 1)
+            rows = (
+                self._base_query()
+                .filter(
+                    EmployeeScheduleModel.employee_id == employee_id,
+                    EmployeeScheduleModel.date >= start,
+                    EmployeeScheduleModel.date < end,
+                )
+                .all()
             )
-            .all()
-        )
-        return [self._to_entity(r) for r in rows]
+            return [self._to_entity(r) for r in rows]
 
     def get_schedules(
         self,
@@ -203,42 +216,46 @@ class EmployeeScheduleRepository:
         start_date: Optional[dt.date] = None,
         end_date: Optional[dt.date] = None,
     ) -> List[EmployeeScheduleEntity]:
-        query = self._base_query()
-        if employee_id is not None:
-            query = query.filter(EmployeeScheduleModel.employee_id == employee_id)
-        if start_date is not None:
-            query = query.filter(EmployeeScheduleModel.date >= start_date)
-        if end_date is not None:
-            query = query.filter(EmployeeScheduleModel.date <= end_date)
-        
-        query = query.order_by(EmployeeScheduleModel.date.desc(), EmployeeScheduleModel.employee_id)
-        return [self._to_entity(r) for r in query.all()]
+        with auto_session(self._session) as session:
+            query = self._base_query()
+            if employee_id is not None:
+                query = query.filter(EmployeeScheduleModel.employee_id == employee_id)
+            if start_date is not None:
+                query = query.filter(EmployeeScheduleModel.date >= start_date)
+            if end_date is not None:
+                query = query.filter(EmployeeScheduleModel.date <= end_date)
+            
+            query = query.order_by(EmployeeScheduleModel.date.desc(), EmployeeScheduleModel.employee_id)
+            return [self._to_entity(r) for r in query.all()]
 
     def create(self, **kwargs) -> EmployeeScheduleEntity:
-        m = EmployeeScheduleModel(**kwargs)
-        self._session.add(m)
-        self._session.commit()
-        self._session.refresh(m)
-        # Reload with joins
-        return self._to_entity(self._base_query().filter_by(id=m.id).first())
+        with auto_session(self._session) as session:
+            m = EmployeeScheduleModel(**kwargs)
+            session.add(m)
+            session.flush()
+            session.refresh(m)
+            # Reload with joins
+            return self._to_entity(self._base_query().filter_by(id=m.id).first())
 
     def update(self, id: int, **kwargs) -> Optional[EmployeeScheduleEntity]:
-        m = self._session.query(EmployeeScheduleModel).filter_by(id=id).first()
-        if m is None:
-            return None
-        for k, v in kwargs.items():
-            if hasattr(m, k):
-                setattr(m, k, v)
-        self._session.commit()
-        return self._to_entity(self._base_query().filter_by(id=id).first())
+        with auto_session(self._session) as session:
+            m = session.query(EmployeeScheduleModel).filter_by(id=id).first()
+            if m is None:
+                return None
+            for k, v in kwargs.items():
+                if hasattr(m, k):
+                    setattr(m, k, v)
+            session.flush()
+            return self._to_entity(self._base_query().filter_by(id=id).first())
 
     def delete(self, id: int) -> bool:
-        m = self._session.query(EmployeeScheduleModel).filter_by(id=id).first()
-        if m is None:
-            return False
-        self._session.delete(m)
-        self._session.commit()
-        return True
+        with auto_session(self._session) as session:
+            m = session.query(EmployeeScheduleModel).filter_by(id=id).first()
+            if m is None:
+                return False
+            session.delete(m)
+            session.flush()
+            return True
 
     def bulk_assign(
         self,
@@ -249,49 +266,50 @@ class EmployeeScheduleRepository:
         skip_rest_days: bool = True,
         rest_day_map: dict[int, str] | None = None,
     ) -> int:
-        """Assign a shift to multiple employees across multiple dates.
-
-        Returns the count of new schedule rows created.
-        rest_day_map: {employee_id: rest_day_name} e.g. {1: "Sunday"}
-        """
-        # Build set of (employee_id, date) that already have schedules
-        existing: set[tuple[int, dt.date]] = set()
-        if skip_existing:
-            existing_rows = (
-                self._session.query(
-                    EmployeeScheduleModel.employee_id,
-                    EmployeeScheduleModel.date,
+        with auto_session(self._session) as session:
+            """Assign a shift to multiple employees across multiple dates.
+    
+            Returns the count of new schedule rows created.
+            rest_day_map: {employee_id: rest_day_name} e.g. {1: "Sunday"}
+            """
+            # Build set of (employee_id, date) that already have schedules
+            existing: set[tuple[int, dt.date]] = set()
+            if skip_existing:
+                existing_rows = (
+                    session.query(
+                        EmployeeScheduleModel.employee_id,
+                        EmployeeScheduleModel.date,
+                    )
+                    .filter(
+                        EmployeeScheduleModel.employee_id.in_(employee_ids),
+                        EmployeeScheduleModel.date.in_(dates),
+                    )
+                    .all()
                 )
-                .filter(
-                    EmployeeScheduleModel.employee_id.in_(employee_ids),
-                    EmployeeScheduleModel.date.in_(dates),
-                )
-                .all()
-            )
-            existing = {(r.employee_id, r.date) for r in existing_rows}
-
-        # Weekday name mapping (Python weekday: 0=Monday, 6=Sunday)
-        _WEEKDAY_NAMES = [
-            "Monday", "Tuesday", "Wednesday", "Thursday",
-            "Friday", "Saturday", "Sunday",
-        ]
-
-        count = 0
-        for emp_id in employee_ids:
-            emp_rest_day = (rest_day_map or {}).get(emp_id, "Sunday") if skip_rest_days else None
-            for d in dates:
-                if skip_existing and (emp_id, d) in existing:
-                    continue
-                if emp_rest_day and _WEEKDAY_NAMES[d.weekday()] == emp_rest_day:
-                    continue
-                new_row = EmployeeScheduleModel(
-                    employee_id=emp_id,
-                    shift_template_id=shift_template_id,
-                    date=d,
-                    is_rest_day=False,
-                    schedule_status=ScheduleStatus.ACTIVE,
-                )
-                self._session.add(new_row)
-                count += 1
-        self._session.commit()
-        return count
+                existing = {(r.employee_id, r.date) for r in existing_rows}
+    
+            # Weekday name mapping (Python weekday: 0=Monday, 6=Sunday)
+            _WEEKDAY_NAMES = [
+                "Monday", "Tuesday", "Wednesday", "Thursday",
+                "Friday", "Saturday", "Sunday",
+            ]
+    
+            count = 0
+            for emp_id in employee_ids:
+                emp_rest_day = (rest_day_map or {}).get(emp_id, "Sunday") if skip_rest_days else None
+                for d in dates:
+                    if skip_existing and (emp_id, d) in existing:
+                        continue
+                    if emp_rest_day and _WEEKDAY_NAMES[d.weekday()] == emp_rest_day:
+                        continue
+                    new_row = EmployeeScheduleModel(
+                        employee_id=emp_id,
+                        shift_template_id=shift_template_id,
+                        date=d,
+                        is_rest_day=False,
+                        schedule_status=ScheduleStatus.ACTIVE,
+                    )
+                    session.add(new_row)
+                    count += 1
+            session.flush()
+            return count

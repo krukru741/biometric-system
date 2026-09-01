@@ -75,77 +75,78 @@ class AttendanceCorrectionService(IAttendanceCorrectionService):
         reviewer_user_id: int,
     ) -> AttendanceCorrectionEntity:
         """Approve and re-run full calculation on the corrected record."""
-        correction_entity = self._corrections.get_by_record(
-            record_id=0  # placeholder — we'll fetch directly
-        )
-        # Fetch the correction model directly
+        from biometric_attendance.infrastructure.data.database import auto_session
         from biometric_attendance.infrastructure.data.models import AttendanceCorrectionModel
-        session = self._corrections._session
-        correction_model = session.query(AttendanceCorrectionModel).filter_by(id=correction_id).first()
-        if correction_model is None:
-            raise ValueError(f"Correction {correction_id} not found.")
 
-        record_model = session.query(AttendanceRecordModel).filter_by(
-            id=correction_model.attendance_record_id
-        ).first()
-        if record_model is None:
-            raise ValueError(f"Record {correction_model.attendance_record_id} not found.")
+        base_session = getattr(self._corrections, "_session", None)
+        with auto_session(base_session) as session:
+            local_corrections = AttendanceCorrectionRepository(session)
+            local_employees = EmployeeRepository(session)
+            
+            correction_model = session.query(AttendanceCorrectionModel).filter_by(id=correction_id).first()
+            if correction_model is None:
+                raise ValueError(f"Correction {correction_id} not found.")
 
-        # Apply the correction to the record
-        ctype = correction_model.correction_type
-        new_val_str = correction_model.requested_value
+            record_model = session.query(AttendanceRecordModel).filter_by(
+                id=correction_model.attendance_record_id
+            ).first()
+            if record_model is None:
+                raise ValueError(f"Record {correction_model.attendance_record_id} not found.")
 
-        def _parse_dt(s: str) -> Optional[dt.datetime]:
-            try:
-                return dt.datetime.fromisoformat(s)
-            except Exception:
-                return None
+            # Apply the correction to the record
+            ctype = correction_model.correction_type
+            new_val_str = correction_model.requested_value
 
-        if ctype == CorrectionType.TIME_IN:
-            record_model.time_in = _parse_dt(new_val_str)
-        elif ctype == CorrectionType.TIME_OUT:
-            record_model.time_out = _parse_dt(new_val_str)
-        elif ctype == CorrectionType.BREAK_OUT:
-            record_model.break_out = _parse_dt(new_val_str)
-        elif ctype == CorrectionType.BREAK_IN:
-            record_model.break_in = _parse_dt(new_val_str)
-        elif ctype == CorrectionType.STATUS:
-            from biometric_attendance.core.enums.attendance import AttendanceStatus
-            try:
-                record_model.status = AttendanceStatus(new_val_str)
-            except ValueError:
-                pass
+            def _parse_dt(s: str) -> Optional[dt.datetime]:
+                try:
+                    return dt.datetime.fromisoformat(s)
+                except Exception:
+                    return None
 
-        # Full recalculation when both times exist
-        if record_model.time_in and record_model.time_out:
-            all_employees = self._employees.get_all()
-            employee = next((e for e in all_employees if e.id == record_model.employee_id), None)
-            schedule = self._resolver.resolve(record_model.employee_id, record_model.date)
-            shift = self._resolver.get_shift(schedule) if schedule else None
-            if shift and employee:
-                calc = self._calc.calculate(
-                    time_in=record_model.time_in,
-                    time_out=record_model.time_out,
-                    break_out=record_model.break_out,
-                    break_in=record_model.break_in,
-                    shift=shift,
-                    schedule_date=record_model.date,
-                    overtime_eligible=employee.overtime_eligible,
-                )
-                record_model.worked_minutes = calc.worked_minutes
-                record_model.late_minutes = calc.late_minutes
-                record_model.undertime_minutes = calc.undertime_minutes
-                record_model.overtime_minutes = calc.overtime_minutes
-                record_model.status = calc.status
+            if ctype == CorrectionType.TIME_IN:
+                record_model.time_in = _parse_dt(new_val_str)
+            elif ctype == CorrectionType.TIME_OUT:
+                record_model.time_out = _parse_dt(new_val_str)
+            elif ctype == CorrectionType.BREAK_OUT:
+                record_model.break_out = _parse_dt(new_val_str)
+            elif ctype == CorrectionType.BREAK_IN:
+                record_model.break_in = _parse_dt(new_val_str)
+            elif ctype == CorrectionType.STATUS:
+                from biometric_attendance.core.enums.attendance import AttendanceStatus
+                try:
+                    record_model.status = AttendanceStatus(new_val_str)
+                except ValueError:
+                    pass
 
-        session.commit()
+            # Full recalculation when both times exist
+            if record_model.time_in and record_model.time_out:
+                all_employees = local_employees.get_all()
+                employee = next((e for e in all_employees if e.id == record_model.employee_id), None)
+                schedule = self._resolver.resolve(record_model.employee_id, record_model.date)
+                shift = self._resolver.get_shift(schedule) if schedule else None
+                if shift and employee:
+                    calc = self._calc.calculate(
+                        time_in=record_model.time_in,
+                        time_out=record_model.time_out,
+                        break_out=record_model.break_out,
+                        break_in=record_model.break_in,
+                        shift=shift,
+                        schedule_date=record_model.date,
+                        overtime_eligible=employee.overtime_eligible,
+                    )
+                    record_model.worked_minutes = calc.worked_minutes
+                    record_model.late_minutes = calc.late_minutes
+                    record_model.undertime_minutes = calc.undertime_minutes
+                    record_model.overtime_minutes = calc.overtime_minutes
+                    record_model.status = calc.status
 
-        return self._corrections.update_status(
-            correction_id=correction_id,
-            status=CorrectionStatus.APPROVED,
-            reviewer_id=reviewer_user_id,
-            reviewed_at=dt.datetime.now(),
-        )
+            # Use local repo to update status within the same transaction
+            return local_corrections.update_status(
+                correction_id=correction_id,
+                status=CorrectionStatus.APPROVED,
+                reviewer_id=reviewer_user_id,
+                reviewed_at=dt.datetime.now(),
+            )
 
     def reject_correction(
         self,
