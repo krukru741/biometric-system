@@ -60,7 +60,7 @@ SessionFactory: sessionmaker[Session] = sessionmaker(
 
 @contextmanager
 def get_session() -> Generator[Session, None, None]:
-    """Provide a transactional session scope."""
+    """Provide a transactional scope around a series of operations."""
     session = SessionFactory()
     try:
         yield session
@@ -70,3 +70,15 @@ def get_session() -> Generator[Session, None, None]:
         raise
     finally:
         session.close()
+
+@contextmanager
+def auto_session(session: Session | None = None) -> Generator[Session, None, None]:
+    """
+    Yields the provided session if it exists, otherwise opens a new 
+    short-lived session using get_session().
+    """
+    if session is not None:
+        yield session
+    else:
+        with get_session() as s:
+            yield s
