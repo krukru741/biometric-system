@@ -42,18 +42,22 @@ class AppContainer(containers.DeclarativeContainer):
 
     user_repository = providers.Factory(
         UserRepository,
+        session=db_session,
     )
 
     department_repository = providers.Factory(
         DepartmentRepository,
+        session=db_session,
     )
 
     position_repository = providers.Factory(
         PositionRepository,
+        session=db_session,
     )
 
     employee_repository = providers.Factory(
         EmployeeRepository,
+        session=db_session,
     )
 
     # ── Application Services ─────────────────────────────────────────────────
@@ -82,14 +86,17 @@ class AppContainer(containers.DeclarativeContainer):
     
     shift_template_repository = providers.Factory(
         ShiftTemplateRepository,
+        session=db_session,
     )
     
     holiday_repository = providers.Factory(
         HolidayRepository,
+        session=db_session,
     )
     
     employee_schedule_repository = providers.Factory(
         EmployeeScheduleRepository,
+        session=db_session,
     )
     
     scheduling_service = providers.Factory(
@@ -105,14 +112,17 @@ class AppContainer(containers.DeclarativeContainer):
 
     attendance_event_repository = providers.Factory(
         "biometric_attendance.infrastructure.repositories.attendance_repository.AttendanceEventRepository",
+        session=db_session,
     )
 
     attendance_record_repository = providers.Factory(
         "biometric_attendance.infrastructure.repositories.attendance_repository.AttendanceRecordRepository",
+        session=db_session,
     )
 
     attendance_correction_repository = providers.Factory(
         "biometric_attendance.infrastructure.repositories.attendance_repository.AttendanceCorrectionRepository",
+        session=db_session,
     )
 
     schedule_resolver = providers.Factory(
@@ -154,14 +164,17 @@ class AppContainer(containers.DeclarativeContainer):
 
     employee_biometric_repository = providers.Factory(
         "biometric_attendance.infrastructure.repositories.biometric_repository.EmployeeBiometricRepository",
+        session=db_session,
     )
 
     biometric_device_repository = providers.Factory(
         "biometric_attendance.infrastructure.repositories.biometric_repository.BiometricDeviceRepository",
+        session=db_session,
     )
 
     biometric_log_repository = providers.Factory(
         "biometric_attendance.infrastructure.repositories.biometric_repository.BiometricLogRepository",
+        session=db_session,
     )
 
     encryption_service = providers.Singleton(

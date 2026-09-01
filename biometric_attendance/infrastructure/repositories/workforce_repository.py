@@ -11,8 +11,8 @@ from biometric_attendance.infrastructure.data.models import DepartmentModel, Emp
 
 
 class DepartmentRepository:
-    def __init__(self, ) -> None:
-        pass
+    def __init__(self, session: Session) -> None:
+        self._session = session
 
     def _to_entity(self, model: DepartmentModel) -> DepartmentEntity:
         return DepartmentEntity(
@@ -23,37 +23,31 @@ class DepartmentRepository:
         )
 
     def get_all(self) -> List[DepartmentEntity]:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            models = session.query(DepartmentModel).all()
-            return [self._to_entity(m) for m in models]
+        models = self._session.query(DepartmentModel).all()
+        return [self._to_entity(m) for m in models]
 
     def create(self, name: str, description: str, is_active: bool = True) -> DepartmentEntity:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            model = DepartmentModel(name=name, description=description, is_active=is_active)
-            session.add(model)
-            session.commit()
-            session.refresh(model)
-            return self._to_entity(model)
+        model = DepartmentModel(name=name, description=description, is_active=is_active)
+        self._session.add(model)
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
 
     def update(self, id: int, name: str, description: str, is_active: bool = True) -> Optional[DepartmentEntity]:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            model = session.query(DepartmentModel).filter_by(id=id).first()
-            if model is None:
-                return None
-            model.name = name
-            model.description = description
-            model.is_active = is_active
-            session.commit()
-            session.refresh(model)
-            return self._to_entity(model)
+        model = self._session.query(DepartmentModel).filter_by(id=id).first()
+        if model is None:
+            return None
+        model.name = name
+        model.description = description
+        model.is_active = is_active
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
 
 
 class PositionRepository:
-    def __init__(self, ) -> None:
-        pass
+    def __init__(self, session: Session) -> None:
+        self._session = session
 
     def _to_entity(self, model: PositionModel) -> PositionEntity:
         return PositionEntity(
@@ -66,52 +60,46 @@ class PositionRepository:
         )
 
     def get_all(self) -> List[PositionEntity]:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            models = session.query(PositionModel).options(joinedload(PositionModel.department)).all()
-            return [self._to_entity(m) for m in models]
+        models = self._session.query(PositionModel).options(joinedload(PositionModel.department)).all()
+        return [self._to_entity(m) for m in models]
 
     def create(
         self, name: str, description: str, department_id: Optional[int], is_active: bool = True
     ) -> PositionEntity:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            model = PositionModel(
-                name=name,
-                description=description,
-                department_id=department_id,
-                is_active=is_active,
-            )
-            session.add(model)
-            session.commit()
-            session.refresh(model)
-            return self._to_entity(model)
+        model = PositionModel(
+            name=name,
+            description=description,
+            department_id=department_id,
+            is_active=is_active,
+        )
+        self._session.add(model)
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
 
     def update(
         self, id: int, name: str, description: str, department_id: Optional[int], is_active: bool = True
     ) -> Optional[PositionEntity]:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            model = (
-                session.query(PositionModel)
-                .options(joinedload(PositionModel.department))
-                .filter_by(id=id)
-                .first()
-            )
-            if model is None:
-                return None
-            model.name = name
-            model.description = description
-            model.department_id = department_id
-            model.is_active = is_active
-            session.commit()
-            session.refresh(model)
-            return self._to_entity(model)
+        model = (
+            self._session.query(PositionModel)
+            .options(joinedload(PositionModel.department))
+            .filter_by(id=id)
+            .first()
+        )
+        if model is None:
+            return None
+        model.name = name
+        model.description = description
+        model.department_id = department_id
+        model.is_active = is_active
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
 
 
 class EmployeeRepository:
-    def __init__(self, ) -> None:
-        pass
+    def __init__(self, session: Session) -> None:
+        self._session = session
 
     def _to_entity(self, model: EmployeeModel) -> EmployeeEntity:
         return EmployeeEntity(
@@ -141,48 +129,40 @@ class EmployeeRepository:
         )
 
     def get_all(self) -> List[EmployeeEntity]:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            models = (
-                session.query(EmployeeModel)
-                .options(joinedload(EmployeeModel.department), joinedload(EmployeeModel.position))
-                .all()
-            )
-            return [self._to_entity(m) for m in models]
+        models = (
+            self._session.query(EmployeeModel)
+            .options(joinedload(EmployeeModel.department), joinedload(EmployeeModel.position))
+            .all()
+        )
+        return [self._to_entity(m) for m in models]
 
     def create(self, **kwargs) -> EmployeeEntity:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            model = EmployeeModel(**kwargs)
-            session.add(model)
-            session.commit()
-            session.refresh(model)
-            return self._to_entity(model)
+        model = EmployeeModel(**kwargs)
+        self._session.add(model)
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
 
     def update(self, id: int, **kwargs) -> Optional[EmployeeEntity]:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            model = (
-                session.query(EmployeeModel)
-                .options(joinedload(EmployeeModel.department), joinedload(EmployeeModel.position))
-                .filter_by(id=id)
-                .first()
-            )
-            if model is None:
-                return None
-            for key, value in kwargs.items():
-                if hasattr(model, key):
-                    setattr(model, key, value)
-            session.commit()
-            session.refresh(model)
-            return self._to_entity(model)
+        model = (
+            self._session.query(EmployeeModel)
+            .options(joinedload(EmployeeModel.department), joinedload(EmployeeModel.position))
+            .filter_by(id=id)
+            .first()
+        )
+        if model is None:
+            return None
+        for key, value in kwargs.items():
+            if hasattr(model, key):
+                setattr(model, key, value)
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
 
     def archive(self, id: int) -> bool:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            model = session.query(EmployeeModel).filter_by(id=id).first()
-            if model is None:
-                return False
-            model.status = EmploymentStatus.ARCHIVED
-            session.commit()
-            return True
+        model = self._session.query(EmployeeModel).filter_by(id=id).first()
+        if model is None:
+            return False
+        model.status = EmploymentStatus.ARCHIVED
+        self._session.commit()
+        return True

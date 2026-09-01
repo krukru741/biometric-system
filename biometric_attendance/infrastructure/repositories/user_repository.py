@@ -15,8 +15,8 @@ from biometric_attendance.infrastructure.data.models import RoleModel, UserModel
 class UserRepository(IUserRepository):
     """Reads/writes User aggregates via SQLAlchemy sessions."""
 
-    def __init__(self, ) -> None:
-        pass
+    def __init__(self, session: Session) -> None:
+        self._session = session
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -52,25 +52,19 @@ class UserRepository(IUserRepository):
     # ── IUserRepository ───────────────────────────────────────────────────────
 
     def count(self) -> int:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            return session.query(UserModel).count()
+        return self._session.query(UserModel).count()
 
     def get_by_username(self, username: str) -> UserEntity | None:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            model = (
-                session.query(UserModel)
-                .filter(UserModel.username == username)
-                .first()
-            )
-            return self._to_entity(model) if model else None
+        model = (
+            self._session.query(UserModel)
+            .filter(UserModel.username == username)
+            .first()
+        )
+        return self._to_entity(model) if model else None
 
     def get_by_id(self, user_id: int) -> UserEntity | None:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            model = session.get(UserModel, user_id)
-            return self._to_entity(model) if model else None
+        model = self._session.get(UserModel, user_id)
+        return self._to_entity(model) if model else None
 
     def create(
         self,
@@ -81,32 +75,28 @@ class UserRepository(IUserRepository):
         role_names: list[str],
     ) -> UserEntity:
         # Resolve role models
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            role_models: list[RoleModel] = []
-            for role_name in role_names:
-                role = session.query(RoleModel).filter_by(name=role_name).first()
-                if role is None:
-                    raise ValueError(f"Role not found: {role_name}")
-                role_models.append(role)
-    
-            user = UserModel(
-                username=username,
-                display_name=display_name,
-                email=email,
-                hashed_password=hashed_password,
-                is_active=True,
-            )
-            user.roles = role_models
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-            return self._to_entity(user)
+        role_models: list[RoleModel] = []
+        for role_name in role_names:
+            role = self._session.query(RoleModel).filter_by(name=role_name).first()
+            if role is None:
+                raise ValueError(f"Role not found: {role_name}")
+            role_models.append(role)
+
+        user = UserModel(
+            username=username,
+            display_name=display_name,
+            email=email,
+            hashed_password=hashed_password,
+            is_active=True,
+        )
+        user.roles = role_models
+        self._session.add(user)
+        self._session.commit()
+        self._session.refresh(user)
+        return self._to_entity(user)
 
     def update_last_login(self, user_id: int) -> None:
-        from biometric_attendance.infrastructure.data.database import get_session
-        with get_session() as session:
-            model = session.get(UserModel, user_id)
-            if model:
-                model.last_login_at = datetime.datetime.now()
-                session.commit()
+        model = self._session.get(UserModel, user_id)
+        if model:
+            model.last_login_at = datetime.datetime.now()
+            self._session.commit()
