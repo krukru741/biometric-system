@@ -25,8 +25,8 @@ from biometric_attendance.infrastructure.data.models import (
 
 
 class AttendanceEventRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
+    def __init__(self, ) -> None:
+        pass
 
     def _to_entity(self, m: AttendanceEventModel) -> AttendanceEventEntity:
         emp = m.employee
@@ -50,43 +50,49 @@ class AttendanceEventRepository:
         )
 
     def save(self, **kwargs) -> AttendanceEventEntity:
-        m = AttendanceEventModel(**kwargs)
-        self._session.add(m)
-        self._session.commit()
-        self._session.refresh(m)
-        return self._to_entity(self._base_query().filter_by(id=m.id).first())
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            m = AttendanceEventModel(**kwargs)
+            session.add(m)
+            session.commit()
+            session.refresh(m)
+            return self._to_entity(self._base_query().filter_by(id=m.id).first())
 
     def get_by_employee_and_date(
         self, employee_id: int, date: dt.date
     ) -> List[AttendanceEventEntity]:
-        start = dt.datetime.combine(date, dt.time.min)
-        end = dt.datetime.combine(date, dt.time.max)
-        rows = (
-            self._base_query()
-            .filter(
-                AttendanceEventModel.employee_id == employee_id,
-                AttendanceEventModel.timestamp >= start,
-                AttendanceEventModel.timestamp <= end,
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            start = dt.datetime.combine(date, dt.time.min)
+            end = dt.datetime.combine(date, dt.time.max)
+            rows = (
+                self._base_query()
+                .filter(
+                    AttendanceEventModel.employee_id == employee_id,
+                    AttendanceEventModel.timestamp >= start,
+                    AttendanceEventModel.timestamp <= end,
+                )
+                .order_by(AttendanceEventModel.timestamp)
+                .all()
             )
-            .order_by(AttendanceEventModel.timestamp)
-            .all()
-        )
-        return [self._to_entity(r) for r in rows]
+            return [self._to_entity(r) for r in rows]
 
     def get_recent_events(
         self, employee_id: int, since: dt.datetime
     ) -> List[AttendanceEventEntity]:
-        """Return events for an employee since a given datetime (for duplicate detection)."""
-        rows = (
-            self._base_query()
-            .filter(
-                AttendanceEventModel.employee_id == employee_id,
-                AttendanceEventModel.timestamp >= since,
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            """Return events for an employee since a given datetime (for duplicate detection)."""
+            rows = (
+                self._base_query()
+                .filter(
+                    AttendanceEventModel.employee_id == employee_id,
+                    AttendanceEventModel.timestamp >= since,
+                )
+                .order_by(AttendanceEventModel.timestamp.desc())
+                .all()
             )
-            .order_by(AttendanceEventModel.timestamp.desc())
-            .all()
-        )
-        return [self._to_entity(r) for r in rows]
+            return [self._to_entity(r) for r in rows]
 
     def get_by_date_range(
         self,
@@ -94,20 +100,22 @@ class AttendanceEventRepository:
         end_date: dt.date,
         employee_id: Optional[int] = None,
     ) -> List[AttendanceEventEntity]:
-        start = dt.datetime.combine(start_date, dt.time.min)
-        end = dt.datetime.combine(end_date, dt.time.max)
-        query = self._base_query().filter(
-            AttendanceEventModel.timestamp >= start,
-            AttendanceEventModel.timestamp <= end,
-        )
-        if employee_id is not None:
-            query = query.filter(AttendanceEventModel.employee_id == employee_id)
-        return [self._to_entity(r) for r in query.order_by(AttendanceEventModel.timestamp).all()]
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            start = dt.datetime.combine(start_date, dt.time.min)
+            end = dt.datetime.combine(end_date, dt.time.max)
+            query = self._base_query().filter(
+                AttendanceEventModel.timestamp >= start,
+                AttendanceEventModel.timestamp <= end,
+            )
+            if employee_id is not None:
+                query = query.filter(AttendanceEventModel.employee_id == employee_id)
+            return [self._to_entity(r) for r in query.order_by(AttendanceEventModel.timestamp).all()]
 
 
 class AttendanceRecordRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
+    def __init__(self, ) -> None:
+        pass
 
     def _to_entity(self, m: AttendanceRecordModel) -> AttendanceRecordEntity:
         emp = m.employee
@@ -143,64 +151,70 @@ class AttendanceRecordRepository:
         date: dt.date,
         schedule_id: Optional[int] = None,
     ) -> tuple[AttendanceRecordModel, bool]:
-        """Return (model, is_new).
-
-        Overnight routing: if no record exists for `date`, check the previous
-        day for an open (time_out IS NULL) record — if found, that record owns
-        this OUT event (per Q2: attendance date = IN date).
-        """
-        existing = (
-            self._session.query(AttendanceRecordModel)
-            .filter_by(employee_id=employee_id, date=date)
-            .first()
-        )
-        if existing:
-            return existing, False
-
-        # Overnight check: look for an open record from the previous calendar day
-        prev_date = date - dt.timedelta(days=1)
-        prev_record = (
-            self._session.query(AttendanceRecordModel)
-            .filter(
-                AttendanceRecordModel.employee_id == employee_id,
-                AttendanceRecordModel.date == prev_date,
-                AttendanceRecordModel.time_out.is_(None),
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            """Return (model, is_new).
+    
+            Overnight routing: if no record exists for `date`, check the previous
+            day for an open (time_out IS NULL) record — if found, that record owns
+            this OUT event (per Q2: attendance date = IN date).
+            """
+            existing = (
+                session.query(AttendanceRecordModel)
+                .filter_by(employee_id=employee_id, date=date)
+                .first()
             )
-            .first()
-        )
-        if prev_record is not None:
-            # The OUT event belongs to the overnight record started yesterday
-            return prev_record, False
-
-        # Create new record
-        new_record = AttendanceRecordModel(
-            employee_id=employee_id,
-            date=date,
-            schedule_id=schedule_id,
-            status=AttendanceStatus.INCOMPLETE,
-            worked_minutes=0,
-            late_minutes=0,
-            undertime_minutes=0,
-            overtime_minutes=0,
-        )
-        self._session.add(new_record)
-        self._session.flush()
-        return new_record, True
+            if existing:
+                return existing, False
+    
+            # Overnight check: look for an open record from the previous calendar day
+            prev_date = date - dt.timedelta(days=1)
+            prev_record = (
+                session.query(AttendanceRecordModel)
+                .filter(
+                    AttendanceRecordModel.employee_id == employee_id,
+                    AttendanceRecordModel.date == prev_date,
+                    AttendanceRecordModel.time_out.is_(None),
+                )
+                .first()
+            )
+            if prev_record is not None:
+                # The OUT event belongs to the overnight record started yesterday
+                return prev_record, False
+    
+            # Create new record
+            new_record = AttendanceRecordModel(
+                employee_id=employee_id,
+                date=date,
+                schedule_id=schedule_id,
+                status=AttendanceStatus.INCOMPLETE,
+                worked_minutes=0,
+                late_minutes=0,
+                undertime_minutes=0,
+                overtime_minutes=0,
+            )
+            session.add(new_record)
+            session.flush()
+            return new_record, True
 
     def save_model(self, model: AttendanceRecordModel) -> AttendanceRecordEntity:
-        self._session.commit()
-        self._session.refresh(model)
-        return self._to_entity(self._base_query().filter_by(id=model.id).first())
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            session.commit()
+            session.refresh(model)
+            return self._to_entity(self._base_query().filter_by(id=model.id).first())
 
     def get_by_employee_and_date(
         self, employee_id: int, date: dt.date
     ) -> Optional[AttendanceRecordEntity]:
-        m = (
-            self._base_query()
-            .filter_by(employee_id=employee_id, date=date)
-            .first()
-        )
-        return self._to_entity(m) if m else None
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            m = (
+                self._base_query()
+                .filter_by(employee_id=employee_id, date=date)
+                .first()
+            )
+            return self._to_entity(m) if m else None
 
     def get_by_date_range(
         self,
@@ -208,58 +222,62 @@ class AttendanceRecordRepository:
         end_date: dt.date,
         employee_id: Optional[int] = None,
     ) -> List[AttendanceRecordEntity]:
-        query = self._base_query().filter(
-            AttendanceRecordModel.date >= start_date,
-            AttendanceRecordModel.date <= end_date,
-        )
-        if employee_id is not None:
-            query = query.filter(AttendanceRecordModel.employee_id == employee_id)
-        return [
-            self._to_entity(r)
-            for r in query.order_by(
-                AttendanceRecordModel.date.desc(),
-                AttendanceRecordModel.employee_id,
-            ).all()
-        ]
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            query = self._base_query().filter(
+                AttendanceRecordModel.date >= start_date,
+                AttendanceRecordModel.date <= end_date,
+            )
+            if employee_id is not None:
+                query = query.filter(AttendanceRecordModel.employee_id == employee_id)
+            return [
+                self._to_entity(r)
+                for r in query.order_by(
+                    AttendanceRecordModel.date.desc(),
+                    AttendanceRecordModel.employee_id,
+                ).all()
+            ]
 
     def create_absent_records(
         self,
         date: dt.date,
         employee_ids: List[int],
     ) -> int:
-        """Create ABSENT records for employees with no record on the given date.
-
-        Called by the manual 'Generate Absent Records' button in the UI.
-        Skips employees who already have a record for that date.
-        Returns the count of records created.
-        """
-        existing_ids = {
-            row.employee_id
-            for row in self._session.query(AttendanceRecordModel.employee_id)
-            .filter_by(date=date)
-            .all()
-        }
-        count = 0
-        for emp_id in employee_ids:
-            if emp_id not in existing_ids:
-                m = AttendanceRecordModel(
-                    employee_id=emp_id,
-                    date=date,
-                    status=AttendanceStatus.ABSENT,
-                    worked_minutes=0,
-                    late_minutes=0,
-                    undertime_minutes=0,
-                    overtime_minutes=0,
-                )
-                self._session.add(m)
-                count += 1
-        self._session.commit()
-        return count
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            """Create ABSENT records for employees with no record on the given date.
+    
+            Called by the manual 'Generate Absent Records' button in the UI.
+            Skips employees who already have a record for that date.
+            Returns the count of records created.
+            """
+            existing_ids = {
+                row.employee_id
+                for row in session.query(AttendanceRecordModel.employee_id)
+                .filter_by(date=date)
+                .all()
+            }
+            count = 0
+            for emp_id in employee_ids:
+                if emp_id not in existing_ids:
+                    m = AttendanceRecordModel(
+                        employee_id=emp_id,
+                        date=date,
+                        status=AttendanceStatus.ABSENT,
+                        worked_minutes=0,
+                        late_minutes=0,
+                        undertime_minutes=0,
+                        overtime_minutes=0,
+                    )
+                    session.add(m)
+                    count += 1
+            session.commit()
+            return count
 
 
 class AttendanceCorrectionRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
+    def __init__(self, ) -> None:
+        pass
 
     def _to_entity(self, m: AttendanceCorrectionModel) -> AttendanceCorrectionEntity:
         emp = m.employee
@@ -291,11 +309,13 @@ class AttendanceCorrectionRepository:
         )
 
     def create(self, **kwargs) -> AttendanceCorrectionEntity:
-        m = AttendanceCorrectionModel(**kwargs)
-        self._session.add(m)
-        self._session.commit()
-        self._session.refresh(m)
-        return self._to_entity(self._base_query().filter_by(id=m.id).first())
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            m = AttendanceCorrectionModel(**kwargs)
+            session.add(m)
+            session.commit()
+            session.refresh(m)
+            return self._to_entity(self._base_query().filter_by(id=m.id).first())
 
     def update_status(
         self,
@@ -305,39 +325,47 @@ class AttendanceCorrectionRepository:
         reviewed_at: dt.datetime,
         comment: Optional[str] = None,
     ) -> Optional[AttendanceCorrectionEntity]:
-        m = self._session.query(AttendanceCorrectionModel).filter_by(id=correction_id).first()
-        if m is None:
-            return None
-        m.status = status
-        m.reviewed_by = reviewer_id
-        m.reviewed_at = reviewed_at
-        m.review_comment = comment
-        self._session.commit()
-        return self._to_entity(self._base_query().filter_by(id=correction_id).first())
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            m = session.query(AttendanceCorrectionModel).filter_by(id=correction_id).first()
+            if m is None:
+                return None
+            m.status = status
+            m.reviewed_by = reviewer_id
+            m.reviewed_at = reviewed_at
+            m.review_comment = comment
+            session.commit()
+            return self._to_entity(self._base_query().filter_by(id=correction_id).first())
 
     def get_pending(self) -> List[AttendanceCorrectionEntity]:
-        rows = (
-            self._base_query()
-            .filter_by(status=CorrectionStatus.PENDING)
-            .order_by(AttendanceCorrectionModel.requested_at)
-            .all()
-        )
-        return [self._to_entity(r) for r in rows]
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            rows = (
+                self._base_query()
+                .filter_by(status=CorrectionStatus.PENDING)
+                .order_by(AttendanceCorrectionModel.requested_at)
+                .all()
+            )
+            return [self._to_entity(r) for r in rows]
 
     def get_by_record(self, record_id: int) -> List[AttendanceCorrectionEntity]:
-        rows = (
-            self._base_query()
-            .filter_by(attendance_record_id=record_id)
-            .order_by(AttendanceCorrectionModel.requested_at)
-            .all()
-        )
-        return [self._to_entity(r) for r in rows]
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            rows = (
+                self._base_query()
+                .filter_by(attendance_record_id=record_id)
+                .order_by(AttendanceCorrectionModel.requested_at)
+                .all()
+            )
+            return [self._to_entity(r) for r in rows]
 
     def get_by_employee(self, employee_id: int) -> List[AttendanceCorrectionEntity]:
-        rows = (
-            self._base_query()
-            .filter_by(employee_id=employee_id)
-            .order_by(AttendanceCorrectionModel.requested_at.desc())
-            .all()
-        )
-        return [self._to_entity(r) for r in rows]
+        from biometric_attendance.infrastructure.data.database import get_session
+        with get_session() as session:
+            rows = (
+                self._base_query()
+                .filter_by(employee_id=employee_id)
+                .order_by(AttendanceCorrectionModel.requested_at.desc())
+                .all()
+            )
+            return [self._to_entity(r) for r in rows]

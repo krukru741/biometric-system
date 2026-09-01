@@ -23,8 +23,22 @@ _DB_URL = os.getenv(
 engine = create_engine(
     _DB_URL,
     connect_args={"check_same_thread": False},
+    pool_pre_ping=True,
     echo=False,
 )
+
+import logging
+logging.basicConfig()
+logger = logging.getLogger("sqlalchemy.pool")
+logger.setLevel(logging.INFO)
+
+@event.listens_for(engine, "checkout")
+def checkout_listener(dbapi_conn, connection_rec, connection_proxy):
+    logger.info("Connection checked out from pool")
+
+@event.listens_for(engine, "checkin")
+def checkin_listener(dbapi_conn, connection_rec):
+    logger.info("Connection returned to pool")
 
 
 # Enable WAL mode for better SQLite concurrent read performance
