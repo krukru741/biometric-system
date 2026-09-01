@@ -47,6 +47,7 @@ ALIASES: dict[str, str] = {
     "add":             "plus",
     "edit":            "pencil",
     "delete":          "trash-2",
+    "archive":         "trash-2",
     "search":          "search",
     "filter":          "list-filter",
     "download":        "download",
@@ -88,6 +89,9 @@ ALIASES: dict[str, str] = {
 
 def _load_svg(name: str, color: str = "#292522", size: int = 18) -> Optional[QPixmap]:
     """Load an SVG by name, replace currentColor with `color`, render at `size`px."""
+    import logging
+    logger = logging.getLogger(__name__)
+
     # Resolve alias
     filename = ALIASES.get(name, name)
     svg_path = _ICONS_DIR / f"{filename}.svg"
@@ -96,6 +100,7 @@ def _load_svg(name: str, color: str = "#292522", size: int = 18) -> Optional[QPi
         # Try raw name as fallback
         svg_path = _ICONS_DIR / f"{name}.svg"
         if not svg_path.exists():
+            logger.warning(f"Icon not found: '{name}' (looked for '{filename}.svg')")
             return None
 
     svg_text = svg_path.read_text(encoding="utf-8")
@@ -105,6 +110,7 @@ def _load_svg(name: str, color: str = "#292522", size: int = 18) -> Optional[QPi
 
     renderer = QSvgRenderer(QByteArray(svg_text.encode()))
     if not renderer.isValid():
+        logger.warning(f"Failed to render SVG for icon: '{name}'")
         return None
 
     px = QPixmap(QSize(size, size))

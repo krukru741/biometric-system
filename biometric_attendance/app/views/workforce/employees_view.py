@@ -335,9 +335,11 @@ class EmployeesView(QWidget):
         )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.Interactive)
-        self.table.setColumnWidth(7, 240)
+        self.table.setColumnWidth(7, 260)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(48)
         layout.addWidget(self.table)
         
         self.stack.addWidget(self.list_page)
@@ -471,18 +473,28 @@ class EmployeesView(QWidget):
             actions_layout.setContentsMargins(4, 2, 4, 2)
             actions_layout.setSpacing(6)
             
+            from biometric_attendance.app.styles.icons import icon
+            from biometric_attendance.app.styles import theme
+            
             view_btn = QPushButton("View")
+            view_btn.setIcon(icon("eye", color=theme.PRIMARY, size=16))
             view_btn.setObjectName("SecondaryButton")
-            view_btn.setMinimumWidth(50)
+            view_btn.setMinimumWidth(85)
+            view_btn.setStyleSheet("text-align: center; padding-left: 10px; padding-right: 10px;")
             view_btn.clicked.connect(lambda checked, e=emp: self._on_view_clicked(e))
 
             edit_btn = QPushButton("Edit")
+            edit_btn.setIcon(icon("edit", color=theme.PRIMARY, size=16))
             edit_btn.setObjectName("SecondaryButton")
-            edit_btn.setMinimumWidth(50)
+            edit_btn.setMinimumWidth(85)
+            edit_btn.setStyleSheet("text-align: center; padding-left: 10px; padding-right: 10px;")
             edit_btn.clicked.connect(lambda checked, e=emp: self._on_edit_clicked(e))
 
             archive_btn = QPushButton("Archive")
+            archive_btn.setIcon(icon("archive", color=theme.TEXT_SECONDARY, size=16))
             archive_btn.setObjectName("GhostButton")
+            archive_btn.setMinimumWidth(100)
+            archive_btn.setStyleSheet("text-align: center; padding-left: 10px; padding-right: 10px;")
             archive_btn.setEnabled(emp.status != EmploymentStatus.ARCHIVED)
             archive_btn.clicked.connect(lambda checked, e=emp: self._on_archive_clicked(e))
 
@@ -490,7 +502,7 @@ class EmployeesView(QWidget):
             actions_layout.addWidget(edit_btn)
             actions_layout.addWidget(archive_btn)
             self.table.setCellWidget(row, 7, actions_widget)
-        self.table.setColumnWidth(7, 240)
+        self.table.setColumnWidth(7, 300)
 
     def _on_error(self, message):
         QMessageBox.critical(self, "Error", message)
