@@ -108,9 +108,11 @@ class DepartmentsView(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Interactive)
-        self.table.setColumnWidth(4, 100)
+        self.table.setColumnWidth(4, 120)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(48)
         layout.addWidget(self.table)
 
     def _connect_signals(self):
@@ -147,12 +149,17 @@ class DepartmentsView(QWidget):
             self.table.setItem(row, 1, QTableWidgetItem(dept.name))
             self.table.setItem(row, 2, QTableWidgetItem(dept.description or ""))
             self.table.setItem(row, 3, QTableWidgetItem("Active" if dept.is_active else "Inactive"))
+            from biometric_attendance.app.styles.icons import icon
+            from biometric_attendance.app.styles import theme
+            
             edit_btn = QPushButton("Edit")
+            edit_btn.setIcon(icon("edit", color=theme.PRIMARY, size=16))
             edit_btn.setObjectName("SecondaryButton")
-            edit_btn.setMinimumWidth(70)
+            edit_btn.setMinimumWidth(85)
+            edit_btn.setStyleSheet("text-align: center; padding-left: 10px; padding-right: 10px;")
             edit_btn.clicked.connect(lambda checked, d=dept: self._on_edit_clicked(d))
             self.table.setCellWidget(row, 4, edit_btn)
-        self.table.setColumnWidth(4, 100)
+        self.table.setColumnWidth(4, 120)
 
     def _on_error(self, message):
         QMessageBox.critical(self, "Error", message)

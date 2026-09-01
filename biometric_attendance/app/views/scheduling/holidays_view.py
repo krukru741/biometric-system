@@ -148,8 +148,11 @@ class HolidaysView(QWidget):
         self.table.setHorizontalHeaderLabels(["Date", "Name", "Type", "Paid", "Notes", "Actions"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Interactive)
+        self.table.setColumnWidth(5, 240)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(48)
         layout.addWidget(self.table)
 
     def _connect_signals(self):
@@ -203,20 +206,28 @@ class HolidaysView(QWidget):
             al.setContentsMargins(4, 2, 4, 2)
             al.setSpacing(4)
 
+            from biometric_attendance.app.styles.icons import icon
+            from biometric_attendance.app.styles import theme
+            
             edit_btn = QPushButton("Edit")
+            edit_btn.setIcon(icon("edit", color=theme.PRIMARY, size=16))
             edit_btn.setObjectName("SecondaryButton")
-            edit_btn.setMinimumWidth(60)
+            edit_btn.setMinimumWidth(85)
+            edit_btn.setStyleSheet("text-align: center; padding-left: 10px; padding-right: 10px;")
             edit_btn.clicked.connect(lambda _, hol=h: self._on_edit_clicked(hol))
 
             del_btn = QPushButton("Delete")
+            del_btn.setIcon(icon("delete", color=theme.TEXT_SECONDARY, size=16))
             del_btn.setObjectName("GhostButton")
+            del_btn.setMinimumWidth(100)
+            del_btn.setStyleSheet("text-align: center; padding-left: 10px; padding-right: 10px;")
             del_btn.clicked.connect(lambda _, hol=h: self._on_delete_clicked(hol))
 
             al.addWidget(edit_btn)
             al.addWidget(del_btn)
             self.table.setCellWidget(row, 5, actions)
 
-        self.table.setColumnWidth(5, 160)
+        self.table.setColumnWidth(5, 240)
 
     def _on_error(self, msg):
         QMessageBox.critical(self, "Error", msg)

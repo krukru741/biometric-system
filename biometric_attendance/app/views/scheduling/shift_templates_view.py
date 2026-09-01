@@ -175,9 +175,11 @@ class ShiftTemplatesView(QWidget):
             ["Name", "Start", "End", "Break", "Grace", "Late", "OT", "Actions"]
         )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.Interactive)
+        self.table.setColumnWidth(7, 240)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(48)
         layout.addWidget(self.table)
 
     def _connect_signals(self):
@@ -239,13 +241,21 @@ class ShiftTemplatesView(QWidget):
             al.setContentsMargins(4, 2, 4, 2)
             al.setSpacing(4)
 
+            from biometric_attendance.app.styles.icons import icon
+            from biometric_attendance.app.styles import theme
+            
             edit_btn = QPushButton("Edit")
+            edit_btn.setIcon(icon("edit", color=theme.PRIMARY, size=16))
             edit_btn.setObjectName("SecondaryButton")
-            edit_btn.setMinimumWidth(60)
+            edit_btn.setMinimumWidth(85)
+            edit_btn.setStyleSheet("text-align: center; padding-left: 10px; padding-right: 10px;")
             edit_btn.clicked.connect(lambda _, sh=s: self._on_edit_clicked(sh))
 
             deact_btn = QPushButton("Deactivate")
+            deact_btn.setIcon(icon("archive", color=theme.TEXT_SECONDARY, size=16))
             deact_btn.setObjectName("GhostButton")
+            deact_btn.setMinimumWidth(120)
+            deact_btn.setStyleSheet("text-align: center; padding-left: 10px; padding-right: 10px;")
             deact_btn.setEnabled(s.is_active)
             deact_btn.clicked.connect(lambda _, sh=s: self._on_deactivate_clicked(sh))
 
@@ -253,7 +263,7 @@ class ShiftTemplatesView(QWidget):
             al.addWidget(deact_btn)
             self.table.setCellWidget(row, 7, actions)
 
-        self.table.setColumnWidth(7, 190)
+        self.table.setColumnWidth(7, 240)
 
     def _on_error(self, msg):
         QMessageBox.critical(self, "Error", msg)
