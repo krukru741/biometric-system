@@ -80,28 +80,33 @@ class PositionsViewModel(QObject):
 
 
 class EmployeesViewModel(QObject):
+    loading_changed = Signal(bool)
     error_occurred = Signal(str)
-    employees_loaded = Signal(list)  # list[EmployeeEntity]
+    employees_loaded = Signal(list)
     departments_loaded = Signal(list)
     positions_loaded = Signal(list)
 
     def __init__(self, workforce_service: WorkforceService):
         super().__init__()
+        from biometric_attendance.app.viewmodels.async_loader import AsyncLoader
         self._service = workforce_service
+        self._loader = AsyncLoader(self, error_message="Unable to load employees. Please try again.")
+        self._loader.busy_changed.connect(self.loading_changed)
+        self._loader.loaded.connect(self._on_loaded)
+        self._loader.failed.connect(self.error_occurred)
 
     @Slot()
     def load_data(self) -> None:
-        try:
-            depts = self._service.get_all_departments()
-            self.departments_loaded.emit(depts)
+        def read():
+            return (self._service.get_all_departments(), self._service.get_all_positions(), self._service.get_all_employees())
+        self._loader.load(read)
 
-            positions = self._service.get_all_positions()
-            self.positions_loaded.emit(positions)
-
-            employees = self._service.get_all_employees()
-            self.employees_loaded.emit(employees)
-        except Exception as e:
-            self.error_occurred.emit(str(e))
+    @Slot(object)
+    def _on_loaded(self, result):
+        departments, positions, employees = result
+        self.departments_loaded.emit(departments)
+        self.positions_loaded.emit(positions)
+        self.employees_loaded.emit(employees)
 
     def create_employee(self, data: dict) -> None:
         """Create an employee from a dictionary of fields."""

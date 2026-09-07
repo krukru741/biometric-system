@@ -117,6 +117,23 @@ def apply_card_shadow(widget: QWidget, level: int = 1) -> None:
 def build_global_stylesheet() -> str:
     """Return the application-wide QSS stylesheet string."""
     return f"""
+/* Keyboard focus and inline validation shared by page components. */
+QPushButton:focus, QPushButton#PrimaryButton:focus, QPushButton#SecondaryButton:focus,
+QPushButton#GhostButton:focus, QTableView:focus, QLabel:focus {{
+    border: 2px solid {BORDER_FOCUS};
+}}
+QLabel#InlineError {{ color: {DANGER}; padding: 8px; }}
+QProgressBar {{
+    border: 1px solid {BORDER_STRONG};
+    border-radius: 4px;
+    background: {SURFACE_ALT};
+    max-height: 8px;
+}}
+QProgressBar::chunk {{ background: {PRIMARY}; }}
+QWidget#AttendanceRecordsView, QWidget#EmployeesView, QWidget#ComponentDemo {{
+    background-color: {BACKGROUND};
+}}
+
 /* ── Global reset ──────────────────────────────────────────────────────────── */
 QWidget {{
     font-family: {FONT_FAMILY};

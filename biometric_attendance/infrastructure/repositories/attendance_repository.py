@@ -195,7 +195,12 @@ class AttendanceRecordRepository:
         start_date: dt.date,
         end_date: dt.date,
         employee_id: Optional[int] = None,
+        *,
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> List[AttendanceRecordEntity]:
+        if offset < 0 or (limit is not None and limit < 1):
+            raise ValueError("Invalid pagination bounds")
         with auto_session(self._session) as session:
             query = self._base_query(session).filter(
                 AttendanceRecordModel.date >= start_date,
@@ -203,13 +208,12 @@ class AttendanceRecordRepository:
             )
             if employee_id is not None:
                 query = query.filter(AttendanceRecordModel.employee_id == employee_id)
-            return [
-                self._to_entity(r)
-                for r in query.order_by(
-                    AttendanceRecordModel.date.desc(),
-                    AttendanceRecordModel.employee_id,
-                ).all()
-            ]
+            query = query.order_by(AttendanceRecordModel.date.desc(), AttendanceRecordModel.employee_id)
+            if limit is not None:
+                query = query.limit(limit)
+            if offset:
+                query = query.offset(offset)
+            return [self._to_entity(r) for r in query.all()]
 
     def create_absent_records(
         self,

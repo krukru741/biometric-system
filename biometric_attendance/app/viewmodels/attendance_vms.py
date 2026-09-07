@@ -80,57 +80,63 @@ class AttendanceLiveViewModel(QObject):
 
 
 class AttendanceRecordsViewModel(QObject):
-    """ViewModel for the Attendance Records table view."""
-
-    records_loaded = Signal(list)          # list[AttendanceRecordEntity]
+    """Paginated background reads; DTO signals are delivered on the GUI thread."""
+    records_loaded = Signal(list)
     employees_loaded = Signal(list)
-    absent_generated = Signal(int)         # count of ABSENT records created
+    absent_generated = Signal(int)
     error_occurred = Signal(str)
+    loading_changed = Signal(bool)
+    page_loaded = Signal(int, bool)
 
-    def __init__(
-        self,
-        record_repository: AttendanceRecordRepository,
-        employee_repository: EmployeeRepository,
-    ) -> None:
+    def __init__(self, record_repository, employee_repository) -> None:
         super().__init__()
+        from biometric_attendance.app.viewmodels.async_loader import AsyncLoader
         self._records = record_repository
         self._employees = employee_repository
+        self._loader = AsyncLoader(self, error_message="Unable to load attendance. Please try again.")
+        self._loader.busy_changed.connect(self.loading_changed)
+        self._loader.loaded.connect(self._on_records)
+        self._loader.failed.connect(self.error_occurred)
+        self._employee_loader = AsyncLoader(self, error_message="Unable to load employee filters. Please try again.")
+        self._employee_loader.loaded.connect(self._on_employees)
+        self._employee_loader.failed.connect(self.error_occurred)
+
+    @Slot(object)
+    def _on_employees(self, employees):
+        self.employees_loaded.emit(employees)
 
     def load_employees(self) -> None:
-        try:
-            self.employees_loaded.emit(self._employees.get_all())
-        except Exception as e:
-            self.error_occurred.emit(str(e))
+        self._employee_loader.load(self._employees.get_all)
 
-    def load_records(
-        self,
-        start_date: dt.date,
-        end_date: dt.date,
-        employee_id: Optional[int] = None,
-    ) -> None:
-        try:
-            records = self._records.get_by_date_range(
-                start_date=start_date, end_date=end_date, employee_id=employee_id
+    def load_records(self, start_date, end_date, employee_id=None, *, page=0, page_size=100) -> None:
+        if start_date > end_date or page < 0 or not 1 <= page_size <= 500:
+            self.error_occurred.emit("Check the date range and page size.")
+            return
+        def read():
+            rows = self._records.get_by_date_range(
+                start_date=start_date, end_date=end_date, employee_id=employee_id,
+                limit=page_size + 1, offset=page * page_size,
             )
-            self.records_loaded.emit(records)
-        except Exception as e:
-            self.error_occurred.emit(str(e))
+            return rows[:page_size], page, len(rows) > page_size
+        self._loader.load(read)
+
+    @Slot(object)
+    def _on_records(self, result):
+        rows, page, has_more = result
+        self.page_loaded.emit(page, has_more)
+        self.records_loaded.emit(rows)
 
     def generate_absent_records(self, date: dt.date) -> None:
-        """Create ABSENT records for employees with no attendance on the given date.
-
-        Only creates records for Active employees who have a schedule on that date
-        and no existing attendance record. Per Q3, this is manual-trigger only.
-        """
+        # Existing explicit write action; never queued/coalesced as a background read.
         try:
-            all_employees = self._employees.get_all()
             from biometric_attendance.core.enums.workforce import EmploymentStatus
-            active_ids = [e.id for e in all_employees if e.status == EmploymentStatus.ACTIVE]
+            active_ids = [e.id for e in self._employees.get_all() if e.status == EmploymentStatus.ACTIVE]
             count = self._records.create_absent_records(date=date, employee_ids=active_ids)
             self.absent_generated.emit(count)
-            self.load_records(start_date=date, end_date=date)
-        except Exception as e:
-            self.error_occurred.emit(str(e))
+        except Exception:
+            from biometric_attendance.infrastructure.logging.logging_setup import get_logger
+            get_logger(__name__).exception("attendance.generate_absent_failed")
+            self.error_occurred.emit("Unable to generate absent records. Please try again.")
 
 
 class AttendanceCorrectionsViewModel(QObject):

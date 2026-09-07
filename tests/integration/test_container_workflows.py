@@ -82,6 +82,19 @@ def test_historical_scan_is_not_duplicate_of_later_day(app):
     assert result.record.date == earlier_day
 
 
+def test_attendance_pagination_preserves_order_and_boundaries(app):
+    container, _, employee_id = app
+    for offset in range(3):
+        scan(container, employee_id, DAY + dt.timedelta(days=offset), 8)
+    repo = container.attendance_record_repository()
+    first = repo.get_by_date_range(DAY, DAY + dt.timedelta(days=2), limit=2)
+    second = repo.get_by_date_range(DAY, DAY + dt.timedelta(days=2), limit=2, offset=2)
+    assert [r.date for r in first + second] == [DAY + dt.timedelta(days=i) for i in (2, 1, 0)]
+    assert len(first) == 2 and len(second) == 1
+    with pytest.raises(ValueError):
+        repo.get_by_date_range(DAY, DAY, offset=-1)
+
+
 def test_out_of_order_scans_within_window_are_duplicates(app):
     container, _, employee_id = app
     scan(container, employee_id, DAY, 8)
