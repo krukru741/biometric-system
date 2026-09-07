@@ -86,7 +86,8 @@ class AttendanceProcessor(IAttendanceProcessor):
 
             # 1. Duplicate detection: same employee + same event_type within 60 s
             since = event_ts - dt.timedelta(seconds=_DUPLICATE_WINDOW_SECONDS)
-            recent = local_events.get_recent_events(employee_id=employee_id, since=since)
+            until = event_ts + dt.timedelta(seconds=_DUPLICATE_WINDOW_SECONDS)
+            recent = local_events.get_recent_events(employee_id=employee_id, since=since, until=until)
             for r in recent:
                 if r.id != event.id and r.event_type == event.event_type:
                     # Build a minimal placeholder record entity for the response
@@ -115,24 +116,38 @@ class AttendanceProcessor(IAttendanceProcessor):
             if employee is None:
                 raise ValueError(f"Employee with id={employee_id} not found.")
 
-            # 3. Resolve schedule (handles overnight: checks prev day if needed)
-            schedule = self._resolver.resolve(employee_id, event_date)
+            # Route only continuation events to an open, scheduled overnight shift.
+            record_date = event_date
+            schedule = self._resolver.resolve(employee_id, record_date)
             shift = self._resolver.get_shift(schedule) if schedule else None
+            if event.event_type != AttendanceEventType.IN:
+                current = local_records.get_by_employee_and_date(employee_id, event_date)
+                previous_date = event_date - dt.timedelta(days=1)
+                previous = local_records.get_by_employee_and_date(employee_id, previous_date)
+                previous_schedule = self._resolver.resolve(employee_id, previous_date)
+                previous_shift = self._resolver.get_shift(previous_schedule) if previous_schedule else None
+                if (previous and previous.time_in and previous.time_out is None
+                        and previous_shift and previous_shift.is_overnight
+                        and previous.time_in <= event_ts
+                        and not (current and current.time_in and current.time_in <= event_ts)):
+                    record_date = previous_date
+                    schedule = previous_schedule
+                    shift = previous_shift
 
             # 4. Holiday check
-            holiday = self._resolver.get_holiday(event_date)
+            holiday = self._resolver.get_holiday(record_date)
 
             # 5. Rest day check
-            is_rest = self._resolver.is_rest_day(employee, event_date)
+            is_rest = self._resolver.is_rest_day(employee, record_date)
 
             # 6. Leave check (stub)
-            is_on_leave = self._has_approved_leave(employee_id, event_date)
+            is_on_leave = self._has_approved_leave(employee_id, record_date)
 
             # 7. Get or create AttendanceRecord (overnight-aware)
             schedule_id = schedule.id if schedule else None
             record_model, is_new = local_records.get_or_create_for_date(
                 employee_id=employee_id,
-                date=event_date,
+                date=record_date,
                 schedule_id=schedule_id,
             )
 

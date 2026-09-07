@@ -44,9 +44,9 @@ class AttendanceEventRepository:
             created_at=m.created_at,
         )
 
-    def _base_query(self):
+    def _base_query(self, session: Session):
         return (
-            self._session.query(AttendanceEventModel)
+            session.query(AttendanceEventModel)
             .options(joinedload(AttendanceEventModel.employee))
         )
 
@@ -56,7 +56,7 @@ class AttendanceEventRepository:
             session.add(m)
             session.flush()
             session.refresh(m)
-            return self._to_entity(self._base_query().filter_by(id=m.id).first())
+            return self._to_entity(self._base_query(session).filter_by(id=m.id).first())
 
     def get_by_employee_and_date(
         self, employee_id: int, date: dt.date
@@ -65,7 +65,7 @@ class AttendanceEventRepository:
             start = dt.datetime.combine(date, dt.time.min)
             end = dt.datetime.combine(date, dt.time.max)
             rows = (
-                self._base_query()
+                self._base_query(session)
                 .filter(
                     AttendanceEventModel.employee_id == employee_id,
                     AttendanceEventModel.timestamp >= start,
@@ -77,15 +77,16 @@ class AttendanceEventRepository:
             return [self._to_entity(r) for r in rows]
 
     def get_recent_events(
-        self, employee_id: int, since: dt.datetime
+        self, employee_id: int, since: dt.datetime, until: dt.datetime
     ) -> List[AttendanceEventEntity]:
         with auto_session(self._session) as session:
             """Return events for an employee since a given datetime (for duplicate detection)."""
             rows = (
-                self._base_query()
+                self._base_query(session)
                 .filter(
                     AttendanceEventModel.employee_id == employee_id,
                     AttendanceEventModel.timestamp >= since,
+                    AttendanceEventModel.timestamp <= until,
                 )
                 .order_by(AttendanceEventModel.timestamp.desc())
                 .all()
@@ -101,7 +102,7 @@ class AttendanceEventRepository:
         with auto_session(self._session) as session:
             start = dt.datetime.combine(start_date, dt.time.min)
             end = dt.datetime.combine(end_date, dt.time.max)
-            query = self._base_query().filter(
+            query = self._base_query(session).filter(
                 AttendanceEventModel.timestamp >= start,
                 AttendanceEventModel.timestamp <= end,
             )
@@ -136,9 +137,9 @@ class AttendanceRecordRepository:
             updated_at=m.updated_at,
         )
 
-    def _base_query(self):
+    def _base_query(self, session: Session):
         return (
-            self._session.query(AttendanceRecordModel)
+            session.query(AttendanceRecordModel)
             .options(joinedload(AttendanceRecordModel.employee))
         )
 
@@ -149,12 +150,6 @@ class AttendanceRecordRepository:
         schedule_id: Optional[int] = None,
     ) -> tuple[AttendanceRecordModel, bool]:
         with auto_session(self._session) as session:
-            """Return (model, is_new).
-    
-            Overnight routing: if no record exists for `date`, check the previous
-            day for an open (time_out IS NULL) record — if found, that record owns
-            this OUT event (per Q2: attendance date = IN date).
-            """
             existing = (
                 session.query(AttendanceRecordModel)
                 .filter_by(employee_id=employee_id, date=date)
@@ -162,21 +157,6 @@ class AttendanceRecordRepository:
             )
             if existing:
                 return existing, False
-    
-            # Overnight check: look for an open record from the previous calendar day
-            prev_date = date - dt.timedelta(days=1)
-            prev_record = (
-                session.query(AttendanceRecordModel)
-                .filter(
-                    AttendanceRecordModel.employee_id == employee_id,
-                    AttendanceRecordModel.date == prev_date,
-                    AttendanceRecordModel.time_out.is_(None),
-                )
-                .first()
-            )
-            if prev_record is not None:
-                # The OUT event belongs to the overnight record started yesterday
-                return prev_record, False
     
             # Create new record
             new_record = AttendanceRecordModel(
@@ -197,14 +177,14 @@ class AttendanceRecordRepository:
         with auto_session(self._session) as session:
             session.flush()
             session.refresh(model)
-            return self._to_entity(self._base_query().filter_by(id=model.id).first())
+            return self._to_entity(self._base_query(session).filter_by(id=model.id).first())
 
     def get_by_employee_and_date(
         self, employee_id: int, date: dt.date
     ) -> Optional[AttendanceRecordEntity]:
         with auto_session(self._session) as session:
             m = (
-                self._base_query()
+                self._base_query(session)
                 .filter_by(employee_id=employee_id, date=date)
                 .first()
             )
@@ -217,7 +197,7 @@ class AttendanceRecordRepository:
         employee_id: Optional[int] = None,
     ) -> List[AttendanceRecordEntity]:
         with auto_session(self._session) as session:
-            query = self._base_query().filter(
+            query = self._base_query(session).filter(
                 AttendanceRecordModel.date >= start_date,
                 AttendanceRecordModel.date <= end_date,
             )
@@ -294,9 +274,9 @@ class AttendanceCorrectionRepository:
             updated_at=m.updated_at,
         )
 
-    def _base_query(self):
+    def _base_query(self, session: Session):
         return (
-            self._session.query(AttendanceCorrectionModel)
+            session.query(AttendanceCorrectionModel)
             .options(joinedload(AttendanceCorrectionModel.employee))
         )
 
@@ -306,7 +286,7 @@ class AttendanceCorrectionRepository:
             session.add(m)
             session.flush()
             session.refresh(m)
-            return self._to_entity(self._base_query().filter_by(id=m.id).first())
+            return self._to_entity(self._base_query(session).filter_by(id=m.id).first())
 
     def update_status(
         self,
@@ -325,12 +305,12 @@ class AttendanceCorrectionRepository:
             m.reviewed_at = reviewed_at
             m.review_comment = comment
             session.flush()
-            return self._to_entity(self._base_query().filter_by(id=correction_id).first())
+            return self._to_entity(self._base_query(session).filter_by(id=correction_id).first())
 
     def get_pending(self) -> List[AttendanceCorrectionEntity]:
         with auto_session(self._session) as session:
             rows = (
-                self._base_query()
+                self._base_query(session)
                 .filter_by(status=CorrectionStatus.PENDING)
                 .order_by(AttendanceCorrectionModel.requested_at)
                 .all()
@@ -340,7 +320,7 @@ class AttendanceCorrectionRepository:
     def get_by_record(self, record_id: int) -> List[AttendanceCorrectionEntity]:
         with auto_session(self._session) as session:
             rows = (
-                self._base_query()
+                self._base_query(session)
                 .filter_by(attendance_record_id=record_id)
                 .order_by(AttendanceCorrectionModel.requested_at)
                 .all()
@@ -350,7 +330,7 @@ class AttendanceCorrectionRepository:
     def get_by_employee(self, employee_id: int) -> List[AttendanceCorrectionEntity]:
         with auto_session(self._session) as session:
             rows = (
-                self._base_query()
+                self._base_query(session)
                 .filter_by(employee_id=employee_id)
                 .order_by(AttendanceCorrectionModel.requested_at.desc())
                 .all()

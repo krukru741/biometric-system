@@ -58,10 +58,35 @@ SessionFactory: sessionmaker[Session] = sessionmaker(
 )
 
 
+import os
+import time
+import traceback
+import logging
+
+db_logger = logging.getLogger("biometric_attendance.database")
+_active_sessions = {}
+
 @contextmanager
 def get_session() -> Generator[Session, None, None]:
     """Provide a transactional scope around a series of operations."""
     session = SessionFactory()
+    session_id = id(session)
+    start_time = time.time()
+    caller = traceback.extract_stack()[-3]
+    loc = f"{os.path.basename(caller.filename)}:{caller.lineno}"
+    _active_sessions[session_id] = (start_time, loc)
+    
+    db_logger.debug(f"Entered get_session from {loc}")
+    # print(f"DEBUG: get_session opened from {loc}")
+    
+    # Check for long-running sessions
+    for sid, (st, sloc) in list(_active_sessions.items()):
+        elapsed = time.time() - st
+        if elapsed > 5:
+            msg = f"LEAK DETECTED: Session {sid} opened at {sloc} has been open for {elapsed:.2f} seconds!"
+            db_logger.warning(msg)
+            print(msg)
+
     try:
         yield session
         session.commit()
@@ -70,6 +95,7 @@ def get_session() -> Generator[Session, None, None]:
         raise
     finally:
         session.close()
+        _active_sessions.pop(session_id, None)
 
 @contextmanager
 def auto_session(session: Session | None = None) -> Generator[Session, None, None]:

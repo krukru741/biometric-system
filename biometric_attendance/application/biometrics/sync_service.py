@@ -3,6 +3,7 @@ import datetime as dt
 
 from biometric_attendance.application.attendance.event_service import AttendanceEventService
 from biometric_attendance.core.enums.attendance import AttendanceSource
+from biometric_attendance.core.enums.workforce import EmploymentStatus
 from biometric_attendance.core.enums.biometrics import BiometricLogType, DeviceStatus
 from biometric_attendance.core.interfaces.i_biometric_device import IBiometricDevice
 from biometric_attendance.infrastructure.repositories.biometric_repository import (
@@ -51,7 +52,7 @@ class BiometricSyncService:
         # Resolve string IDs to DB employee IDs
         employees = self._employee_repo.get_all()
         emp_map = {emp.employee_id: emp.id for emp in employees}
-        active_emp_strs = [emp.employee_id for emp in employees if emp.is_active]
+        active_emp_strs = [emp.employee_id for emp in employees if emp.status == EmploymentStatus.ACTIVE]
 
         adapter: IBiometricDevice = self._adapter_factory(active_emp_strs)
         try:
@@ -105,7 +106,10 @@ class BiometricSyncService:
             self._device_repo.update(device_id, status=DeviceStatus.OFFLINE)
             raise
 
-        employees = self._employee_repo.get_active()
+        employees = [
+            emp for emp in self._employee_repo.get_all()
+            if emp.status == EmploymentStatus.ACTIVE
+        ]
         pushed_count = 0
         try:
             for emp in employees:

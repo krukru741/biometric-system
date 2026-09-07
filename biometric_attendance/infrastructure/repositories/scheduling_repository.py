@@ -169,9 +169,9 @@ class EmployeeScheduleRepository:
             override_end_time=m.override_end_time,
         )
 
-    def _base_query(self):
+    def _base_query(self, session: Session):
         return (
-            self._session.query(EmployeeScheduleModel)
+            session.query(EmployeeScheduleModel)
             .options(
                 joinedload(EmployeeScheduleModel.employee),
                 joinedload(EmployeeScheduleModel.shift_template),
@@ -186,7 +186,7 @@ class EmployeeScheduleRepository:
             else:
                 end = dt.date(year, month + 1, 1)
             rows = (
-                self._base_query()
+                self._base_query(session)
                 .filter(EmployeeScheduleModel.date >= start, EmployeeScheduleModel.date < end)
                 .all()
             )
@@ -200,7 +200,7 @@ class EmployeeScheduleRepository:
             else:
                 end = dt.date(year, month + 1, 1)
             rows = (
-                self._base_query()
+                self._base_query(session)
                 .filter(
                     EmployeeScheduleModel.employee_id == employee_id,
                     EmployeeScheduleModel.date >= start,
@@ -217,7 +217,7 @@ class EmployeeScheduleRepository:
         end_date: Optional[dt.date] = None,
     ) -> List[EmployeeScheduleEntity]:
         with auto_session(self._session) as session:
-            query = self._base_query()
+            query = self._base_query(session)
             if employee_id is not None:
                 query = query.filter(EmployeeScheduleModel.employee_id == employee_id)
             if start_date is not None:
@@ -235,7 +235,7 @@ class EmployeeScheduleRepository:
             session.flush()
             session.refresh(m)
             # Reload with joins
-            return self._to_entity(self._base_query().filter_by(id=m.id).first())
+            return self._to_entity(self._base_query(session).filter_by(id=m.id).first())
 
     def update(self, id: int, **kwargs) -> Optional[EmployeeScheduleEntity]:
         with auto_session(self._session) as session:
@@ -246,7 +246,7 @@ class EmployeeScheduleRepository:
                 if hasattr(m, k):
                     setattr(m, k, v)
             session.flush()
-            return self._to_entity(self._base_query().filter_by(id=id).first())
+            return self._to_entity(self._base_query(session).filter_by(id=id).first())
 
     def delete(self, id: int) -> bool:
         with auto_session(self._session) as session:

@@ -1,8 +1,7 @@
 """ScheduleResolver — resolves schedule, shift, holiday, and rest-day for a date.
 
-Handles the overnight edge case: if no schedule exists for the event's own
-calendar date but the employee has an open overnight record from the prior day,
-the OUT event is routed to that prior-day record (AttendanceRecord.date = IN date).
+Resolves exact calendar dates; AttendanceProcessor routes overnight events
+to the date of their open record before requesting schedule context.
 """
 from __future__ import annotations
 
@@ -35,27 +34,11 @@ class ScheduleResolver(IScheduleResolver):
         self._holidays = holiday_repository
 
     def resolve(self, employee_id: int, date: dt.date) -> Optional[EmployeeScheduleEntity]:
-        """Return the EmployeeScheduleEntity for employee on date.
-
-        Overnight lookup: if no schedule found for `date`, checks `date - 1 day`
-        for an overnight schedule (is_overnight=True on its ShiftTemplate) so that
-        an OUT event arriving the next morning is correctly attributed.
-        """
+        """Return the schedule for this exact calendar date."""
         schedules = self._schedules.get_schedules(employee_id=employee_id, start_date=date, end_date=date)
         if schedules:
             return schedules[0]
 
-        # Overnight: check the previous day
-        prev_date = date - dt.timedelta(days=1)
-        prev_schedules = self._schedules.get_schedules(
-            employee_id=employee_id, start_date=prev_date, end_date=prev_date
-        )
-        if prev_schedules:
-            sched = prev_schedules[0]
-            # Only return if the shift is actually overnight
-            shift = self.get_shift(sched)
-            if shift and shift.is_overnight:
-                return sched
         return None
 
     def get_shift(self, schedule: EmployeeScheduleEntity) -> Optional[ShiftTemplateEntity]:
